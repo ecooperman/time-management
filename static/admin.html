@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage Categories - Job Search Planner</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="admin-app">
+    <div id="admin-header">
+      <h1>Manage Categories</h1>
+      <a href="/" class="back-link">&larr; Back to planner</a>
+    </div>
+
+    <div id="admin-message" class="admin-message hidden"></div>
+
+    <div id="category-rows"></div>
+
+    <form id="add-category-form" class="category-row new-category-row">
+      <input type="color" id="new-category-color" value="#4C7CAF" />
+      <input type="text" id="new-category-name" placeholder="New category name" required />
+      <button type="submit">Add category</button>
+    </form>
+  </div>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

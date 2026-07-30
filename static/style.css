@@ -1,0 +1,536 @@
+:root {
+  --home-color: #4C9F70;
+  --resume-color: #4C7CAF;
+  --applying-color: #C97B4A;
+  --border: #d9dee3;
+  --text: #1f2933;
+  --muted: #6b7785;
+  --bg: #f5f7f9;
+  --important: #c8960c;
+  --important-bg: #fffaf0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.hidden {
+  display: none;
+}
+
+.note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+#sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  overflow-y: auto;
+}
+
+#sidebar h1 {
+  font-size: 18px;
+  margin: 0 0 16px;
+}
+
+#sidebar h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 20px 0 8px;
+}
+
+.hint {
+  text-transform: none;
+  font-weight: normal;
+  letter-spacing: normal;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.checkbox-label input {
+  width: auto;
+  margin-top: 0;
+}
+
+input, select, textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+#add-task-form button {
+  width: 100%;
+  background: var(--text);
+  color: #fff;
+  border: none;
+  padding: 8px;
+  margin-top: 4px;
+}
+
+/* Shared task list + card styles, used by the sidebar backlog and every
+   calendar day column - they're all just draggable lists of the same kind. */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 24px;
+}
+
+#backlog-list {
+  min-height: 60px;
+}
+
+.task-card {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--cat-color, #999);
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: #fff;
+  cursor: grab;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.task-card .task-title {
+  font-weight: 600;
+}
+
+.task-card .task-meta {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.task-card.status-done {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.task-card.status-on_hold {
+  opacity: 0.65;
+}
+
+.task-card.important {
+  background: var(--important-bg);
+  box-shadow: 0 0 0 2px var(--important);
+}
+
+.task-card .star {
+  color: var(--important);
+  margin-right: 2px;
+}
+
+.task-card .repeat-icon {
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.sortable-ghost {
+  opacity: 0.35;
+}
+
+.sortable-chosen {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  min-width: 0;
+}
+
+#toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#view-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+#view-toggle button.active {
+  background: var(--text);
+  color: #fff;
+}
+
+#nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#nav-title {
+  font-weight: 700;
+  font-size: 16px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+#calendar {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.cal-grid {
+  display: grid;
+  gap: 8px;
+  height: 100%;
+}
+
+#calendar.row-view .cal-grid {
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+}
+
+#calendar.grid-view .cal-grid {
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: minmax(120px, 1fr);
+  height: auto;
+}
+
+.day-col {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.day-col-header {
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  background: #f9fafb;
+  flex-shrink: 0;
+}
+
+.day-col-header .weekday {
+  display: block;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.day-col-header.today {
+  background: #fff3cd;
+}
+
+.day-col.other-month .day-col-header {
+  color: var(--muted);
+}
+
+.day-col.other-month {
+  opacity: 0.6;
+}
+
+.day-col .task-list {
+  flex: 1;
+  padding: 6px;
+  overflow-y: auto;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  width: 360px;
+  max-width: 90vw;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: none;
+  background: none;
+  font-size: 18px;
+  padding: 0 6px;
+}
+
+.modal .row {
+  display: flex;
+  gap: 12px;
+}
+
+.modal .row > label {
+  flex: 1;
+}
+
+.status-row {
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.modal-actions button.danger {
+  color: #b3261e;
+  border-color: #b3261e;
+}
+
+.linked-job {
+  font-size: 13px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.linked-job.hidden {
+  display: none;
+}
+
+.linked-job .applied-badge {
+  color: #1e7a34;
+  font-weight: 600;
+}
+
+.linked-job .not-applied-badge {
+  color: var(--muted);
+}
+
+/* Jobs sidebar section - jobs are a drag *source*, not a reorderable
+   destination the way task lists are; dragging one onto a day clones out a
+   new linked task rather than moving the job itself. */
+
+.job-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.job-card {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--applying-color);
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: #fff;
+  cursor: grab;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.job-card.applied {
+  opacity: 0.55;
+}
+
+.job-card .job-title {
+  font-weight: 600;
+}
+
+.job-card.applied .job-title {
+  text-decoration: line-through;
+}
+
+.job-card .job-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.job-card .job-company {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.job-card .job-company a,
+.task-meta a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.job-card .job-link {
+  color: var(--muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.job-card .applied-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.job-card .applied-toggle input {
+  width: auto;
+  margin: 0;
+}
+
+.job-card .job-delete {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 0 0 0 6px;
+  cursor: pointer;
+}
+
+/* Admin (manage categories) page */
+
+#admin-app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+#admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+#admin-header h1 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.back-link {
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.admin-message {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.admin-message.success {
+  background: #e6f4ea;
+  color: #1e7a34;
+}
+
+.admin-message.error {
+  background: #fbe9e7;
+  color: #b3261e;
+}
+
+.admin-message.hidden {
+  display: none;
+}
+
+.category-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.category-row input[type="color"] {
+  width: 40px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.category-row input[type="text"] {
+  flex: 1;
+  margin-top: 0;
+}
+
+.category-row button {
+  flex-shrink: 0;
+}
+
+.category-row button.danger {
+  color: #b3261e;
+  border-color: #b3261e;
+}
+
+.new-category-row {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Job Search Planner</title>
+  <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <h1>Job Search Planner</h1>
+      <a href="/admin.html" class="back-link">Manage categories</a>
+
+      <form id="add-task-form">
+        <h2>New task</h2>
+        <label>
+          Title
+          <input type="text" id="task-title" required />
+        </label>
+        <label>
+          Category
+          <select id="task-category" required></select>
+        </label>
+        <label>
+          Estimate (minutes)
+          <input type="number" id="task-estimate" min="0" step="5" />
+        </label>
+        <label>
+          Notes
+          <textarea id="task-description" rows="2"></textarea>
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="task-important" />
+          Mark as important
+        </label>
+        <button type="submit">Add to backlog</button>
+      </form>
+
+      <h2>Backlog <span class="hint">(drag onto a day)</span></h2>
+      <div id="backlog-list" class="task-list" data-date=""></div>
+
+      <form id="add-job-form">
+        <h2>New job</h2>
+        <label>
+          Name
+          <input type="text" id="job-name" required />
+        </label>
+        <label>
+          URL
+          <input type="url" id="job-url" required />
+        </label>
+        <label>
+          Company <span class="hint">(optional)</span>
+          <input type="text" id="job-company" />
+        </label>
+        <label>
+          Company URL <span class="hint">(optional)</span>
+          <input type="url" id="job-company-url" />
+        </label>
+        <button type="submit">Add job</button>
+      </form>
+
+      <h2>Jobs <span class="hint">(drag onto a day to create an apply task)</span></h2>
+      <div id="jobs-list" class="job-list"></div>
+    </aside>
+
+    <main>
+      <div id="toolbar">
+        <div id="view-toggle">
+          <button data-view="day">Day</button>
+          <button data-view="workWeek">Work Week</button>
+          <button data-view="week">Week</button>
+          <button data-view="month">Month</button>
+        </div>
+        <div id="nav-controls">
+          <button id="nav-prev">&larr;</button>
+          <button id="nav-today">Today</button>
+          <button id="nav-next">&rarr;</button>
+          <span id="nav-title"></span>
+        </div>
+      </div>
+      <div id="calendar"></div>
+    </main>
+  </div>
+
+  <div id="task-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <button id="modal-close" class="modal-close">&times;</button>
+      <h2 id="modal-title"></h2>
+
+      <label>
+        Title
+        <input type="text" id="modal-task-title" />
+      </label>
+      <label>
+        Category
+        <select id="modal-task-category"></select>
+      </label>
+      <label>
+        Notes
+        <textarea id="modal-task-description" rows="2"></textarea>
+      </label>
+      <div class="row">
+        <label>
+          Estimate (min)
+          <input type="number" id="modal-task-estimate" min="0" step="5" />
+        </label>
+        <label>
+          Actual (min)
+          <input type="number" id="modal-task-actual" min="0" step="5" />
+        </label>
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="modal-task-important" />
+        Mark as important
+      </label>
+
+      <label class="checkbox-label">
+        <input type="checkbox" id="modal-task-repeat" />
+        Repeat daily
+      </label>
+      <label id="modal-repeat-until-row" class="hidden">
+        Repeat until <span class="hint">(optional - leave blank for indefinite)</span>
+        <input type="date" id="modal-task-repeat-until" />
+      </label>
+      <div id="modal-repeat-disabled-hint" class="note hidden">
+        Schedule this task on a day first to enable repeating.
+      </div>
+
+      <div class="status-row">
+        <span>Status: <strong id="modal-task-status"></strong></span>
+      </div>
+
+      <div id="modal-linked-job" class="linked-job hidden">
+        Linked job: <a id="modal-linked-job-link" href="#" target="_blank" rel="noopener"></a>
+        <span id="modal-linked-job-company"></span>
+        <span id="modal-linked-job-applied"></span>
+      </div>
+
+      <div class="modal-actions">
+        <button id="modal-save">Save</button>
+        <button id="modal-mark-done">Mark done</button>
+        <button id="modal-reopen">Reopen</button>
+        <button id="modal-toggle-hold">Put on hold</button>
+        <button id="modal-to-backlog">Back to backlog</button>
+        <button id="modal-delete" class="danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="job-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <button id="job-modal-close" class="modal-close">&times;</button>
+      <h2>Edit job</h2>
+
+      <label>
+        Name
+        <input type="text" id="job-modal-name" />
+      </label>
+      <label>
+        URL
+        <input type="url" id="job-modal-url" />
+      </label>
+      <label>
+        Company <span class="hint">(optional)</span>
+        <input type="text" id="job-modal-company" />
+      </label>
+      <label>
+        Company URL <span class="hint">(optional)</span>
+        <input type="url" id="job-modal-company-url" />
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="job-modal-applied" />
+        Applied
+      </label>
+
+      <div class="modal-actions">
+        <button id="job-modal-save">Save</button>
+        <button id="job-modal-delete" class="danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
