@@ -1,4 +1,4 @@
-# Job Search Planner
+# Time Management
 
 A small local task/calendar app for managing job-search time across three
 buckets: Home, Resume-Building, and Applying for Jobs.
@@ -50,6 +50,37 @@ give it an explicit name (e.g. `'fk_tasks_job_id_jobs'`) in both `upgrade()`
 and `downgrade()` - SQLite's batch mode needs a name to reference, and will
 fail with `ValueError: Constraint must have a name` otherwise.
 
+## Deploying
+
+Runs as a systemd service on the Digital Ocean droplet, reached through a
+Cloudflare Tunnel (no inbound ports opened on the droplet) and gated by
+Cloudflare Access - see `deploy/time-management.service`.
+
+One-time setup on the droplet:
+
+```bash
+sudo mkdir -p /opt/apps/time-management && sudo chown deploy:deploy /opt/apps/time-management
+# as the deploy user:
+git clone https://github.com/ecooperman/time-management.git /opt/apps/time-management
+cd /opt/apps/time-management
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+sudo cp deploy/time-management.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now time-management
+```
+
+Then add an ingress entry for `127.0.0.1:8010` to `/etc/cloudflared/config.yml`,
+route DNS for its hostname (`cloudflared tunnel route dns <tunnel-name>
+<hostname>`), and add a Cloudflare Access policy for that hostname.
+
+Ongoing deploys are automatic: `.github/workflows/deploy.yml` runs on every
+push to `main` - it SSHes in, pulls, reinstalls dependencies, runs `alembic
+upgrade head`, and restarts the service. Needs these repo secrets set once
+(Settings -> Secrets and variables -> Actions): `DO_HOST`, `DO_USER` (the
+`deploy` user), `DO_SSH_KEY` (that user's private key).
+
 ## Notes
 
 - New tasks start in the backlog (sidebar) unscheduled; drag them onto the
@@ -61,7 +92,11 @@ fail with `ValueError: Constraint must have a name` otherwise.
   both are set together whenever a task is placed on the calendar - there's
   no UI yet to make them diverge.
 - Any task still marked "open" whose scheduled day has passed automatically
-  rolls forward to today the next time the app is opened.
+  rolls forward to today the next time the app is opened - except recurring
+  tasks (the origin or any of its materialized occurrences), which stay put
+  on their original day if left unfinished. Rolling those forward would land
+  them on a day that already has (or will get) its own occurrence, producing
+  a duplicate.
 - Jobs (name/URL/applied, plus optional company name/URL) live in their own
   sidebar section below the backlog. Company name shows on both the job card
   and any task linked to that job (as a link, if a company URL was given). A

@@ -13,12 +13,21 @@ def apply_rollover(db: Session) -> None:
     This runs on read (rather than on a background schedule) because the app
     isn't expected to be running continuously - it needs to self-correct
     whenever it's next opened, no matter how many days it sat closed.
+
+    Recurring tasks are excluded - both the origin (repeat_daily=True) and
+    its materialized occurrences (series_id set). Rolling either forward
+    would land it on a day that already has (or will get) its own
+    materialized occurrence, producing a duplicate. An unfinished recurring
+    occurrence just stays on its original day, which is also the correct
+    "each day is independent" behavior for a daily chore.
     """
     today = datetime.now().date()
     open_tasks = (
         db.query(models.Task)
         .filter(models.Task.status == models.TaskStatus.open)
         .filter(models.Task.scheduled_date.isnot(None))
+        .filter(models.Task.repeat_daily.is_(False))
+        .filter(models.Task.series_id.is_(None))
         .all()
     )
     changed = False

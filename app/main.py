@@ -12,7 +12,7 @@ from .seed import seed_categories
 with SessionLocal() as db:
     seed_categories(db)
 
-app = FastAPI(title="Job Search Planner")
+app = FastAPI(title="Time Management")
 
 app.include_router(categories.router)
 app.include_router(jobs.router)
