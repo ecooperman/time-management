@@ -55,6 +55,7 @@ body {
 
 #sidebar {
   width: 100%;
+  min-width: 0;
   flex-shrink: 0;
   background: #fff;
   border-bottom: 1px solid var(--border);
@@ -321,13 +322,18 @@ main {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 #nav-title {
   font-weight: 700;
   font-size: 16px;
   margin-left: 6px;
-  white-space: nowrap;
+  /* Long-form Day view titles ("Thursday, August 6, 2026") don't fit next
+     to Prev/Today/Next on a narrow phone - let it wrap instead of forcing
+     the row wider than the viewport. Harmless on desktop, where there's
+     always enough room for one line regardless. */
+  white-space: normal;
 }
 
 #calendar {
