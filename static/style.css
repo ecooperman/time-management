@@ -8,6 +8,7 @@
   --bg: #f5f7f9;
   --important: #c8960c;
   --important-bg: #fffaf0;
+  --nav-height: 56px;
 }
 
 * {
@@ -33,7 +34,16 @@ body {
 
 #app {
   display: flex;
-  height: 100vh;
+  /* Leaves room for the fixed bottom tab bar on mobile so it doesn't cover
+     the last inch of the sidebar/calendar; the bar goes back to a static
+     top row at the 640px breakpoint, where this is no longer needed. */
+  height: calc(100vh - var(--nav-height) - env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 640px) {
+  #app {
+    height: 100vh;
+  }
 }
 
 #sidebar {
@@ -376,35 +386,21 @@ main {
   min-height: 24px;
 }
 
+/* Succinct by design - just enough to recognize and drag. Full detail and
+   management lives on jobs.html (see "Jobs admin page" below). */
 .job-card {
   border: 1px solid var(--border);
   border-left: 4px solid var(--applying-color);
   border-radius: 6px;
-  padding: 6px 8px;
+  padding: 8px 10px;
   background: #fff;
   cursor: grab;
   font-size: 13px;
   line-height: 1.3;
 }
 
-.job-card.applied {
-  opacity: 0.55;
-}
-
 .job-card .job-title {
   font-weight: 600;
-}
-
-.job-card.applied .job-title {
-  text-decoration: line-through;
-}
-
-.job-card .job-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 2px;
 }
 
 .job-card .job-company {
@@ -419,51 +415,22 @@ main {
   text-decoration: underline;
 }
 
-.job-card .job-link {
-  color: var(--muted);
-  font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 180px;
-}
-
-.job-card .applied-toggle {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-
-.job-card .applied-toggle input {
-  width: auto;
-  margin: 0;
-}
-
-.job-card .job-delete {
-  border: none;
-  background: none;
-  color: var(--muted);
-  font-size: 14px;
-  padding: 0 0 0 6px;
-  cursor: pointer;
-}
-
 /* Admin (manage categories) page */
 
 #admin-app {
   max-width: 480px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 24px 16px calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 24px);
+}
+
+@media (min-width: 640px) {
+  #admin-app {
+    padding: 24px 16px;
+  }
 }
 
 #admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 #admin-header h1 {
@@ -471,14 +438,71 @@ main {
   margin: 0;
 }
 
-.back-link {
-  color: var(--muted);
-  font-size: 13px;
-  text-decoration: none;
+/* App navigation - a fixed bottom tab bar on mobile (thumb-reachable,
+   always visible, no hidden menu), promoted to a plain top row once there's
+   enough width for it not to need its own dedicated screen real estate. */
+
+.app-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  min-height: var(--nav-height);
+  background: #fff;
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  z-index: 50;
 }
 
-.back-link:hover {
-  text-decoration: underline;
+.app-nav-link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px 6px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.app-nav-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.app-nav-link.active {
+  color: var(--text);
+}
+
+@media (min-width: 640px) {
+  .app-nav {
+    position: static;
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    padding: 6px;
+    margin-bottom: 16px;
+    justify-content: flex-start;
+    gap: 4px;
+  }
+
+  .app-nav-link {
+    flex: none;
+    flex-direction: row;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+
+  .app-nav-link.active {
+    background: var(--bg);
+  }
 }
 
 .admin-message {
@@ -533,4 +557,137 @@ main {
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
+}
+
+/* Jobs admin page - mobile-first: single column, full-width tap targets by
+   default; only widens into a denser desktop layout above 640px. */
+
+.add-job-toggle {
+  display: block;
+  width: 100%;
+  background: var(--text);
+  color: #fff;
+  border: none;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.job-admin-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.job-admin-card.applied {
+  background: #f9fafb;
+}
+
+#add-job-form.job-admin-card {
+  border-left: 4px solid var(--applying-color);
+  padding: 14px;
+}
+
+/* Collapsed by default - a single-line summary row that's the entire
+   footprint of the card until expanded. */
+.job-admin-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 12px 14px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.job-admin-summary-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.job-admin-applied-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e7a34;
+  background: #e6f4ea;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.job-admin-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.job-admin-card.expanded .job-admin-chevron {
+  transform: rotate(90deg);
+}
+
+.job-admin-details {
+  padding: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.job-admin-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.job-admin-fields input {
+  /* 16px minimum keeps iOS Safari from auto-zooming the page on focus */
+  font-size: 16px;
+  padding: 10px;
+}
+
+.job-admin-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.job-admin-actions button {
+  padding: 10px;
+  font-size: 14px;
+}
+
+.job-admin-actions .checkbox-label {
+  order: -1;
+}
+
+@media (min-width: 640px) {
+  .job-admin-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .job-admin-actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .job-admin-actions .checkbox-label {
+    order: 0;
+    margin-right: auto;
+  }
+
+  .job-admin-actions button {
+    width: auto;
+  }
 }

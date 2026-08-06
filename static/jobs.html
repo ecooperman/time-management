@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage Jobs - Time Management</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="admin-app">
+    <div id="admin-header">
+      <h1>Manage Jobs</h1>
+    </div>
+
+    <nav class="app-nav">
+      <a href="/" class="app-nav-link">
+        <span class="app-nav-icon" aria-hidden="true">📅</span>
+        Planner
+      </a>
+      <a href="/jobs.html" class="app-nav-link active">
+        <span class="app-nav-icon" aria-hidden="true">💼</span>
+        Jobs
+      </a>
+      <a href="/admin.html" class="app-nav-link">
+        <span class="app-nav-icon" aria-hidden="true">🏷️</span>
+        Categories
+      </a>
+    </nav>
+
+    <div id="admin-message" class="admin-message hidden"></div>
+
+    <button id="show-add-job" type="button" class="add-job-toggle">+ Add New Job Opportunity</button>
+
+    <form id="add-job-form" class="job-admin-card hidden">
+      <div class="job-admin-fields">
+        <label>
+          Name
+          <input type="text" id="new-job-name" required />
+        </label>
+        <label>
+          Company <span class="hint">(optional)</span>
+          <input type="text" id="new-job-company" />
+        </label>
+        <label>
+          URL
+          <input type="url" id="new-job-url" required />
+        </label>
+        <label>
+          Company URL <span class="hint">(optional)</span>
+          <input type="url" id="new-job-company-url" />
+        </label>
+      </div>
+      <div class="job-admin-actions">
+        <button type="submit">Add job</button>
+        <button type="button" id="cancel-add-job">Cancel</button>
+      </div>
+    </form>
+
+    <div id="job-rows"></div>
+  </div>
+
+  <script src="/jobs.js"></script>
+</body>
+</html>

@@ -352,9 +352,13 @@ async function refreshBacklog() {
 
 // --- jobs ---
 
+// Sidebar job cards are deliberately succinct - just enough to recognize
+// and drag the job. Full details (URL, company, applied status) and
+// creating new jobs live on the jobs.html admin page; clicking a card here
+// still opens the same edit modal for a quick in-context change.
 function jobCardElement(job) {
   const card = document.createElement("div");
-  card.className = "job-card" + (job.applied ? " applied" : "");
+  card.className = "job-card";
   card.dataset.jobId = job.id;
 
   const title = document.createElement("div");
@@ -362,59 +366,13 @@ function jobCardElement(job) {
   title.textContent = job.name;
   card.appendChild(title);
 
-  if (job.company) {
+  const company = companyNode(job);
+  if (company) {
     const companyLine = document.createElement("div");
     companyLine.className = "job-company";
-    companyLine.appendChild(companyNode(job));
+    companyLine.appendChild(company);
     card.appendChild(companyLine);
   }
-
-  const meta = document.createElement("div");
-  meta.className = "job-meta";
-
-  const link = document.createElement("a");
-  link.className = "job-link";
-  link.href = job.url;
-  link.target = "_blank";
-  link.rel = "noopener";
-  link.textContent = job.url;
-  link.addEventListener("click", (e) => e.stopPropagation());
-  meta.appendChild(link);
-
-  const toggleLabel = document.createElement("label");
-  toggleLabel.className = "applied-toggle";
-  const toggleInput = document.createElement("input");
-  toggleInput.type = "checkbox";
-  toggleInput.checked = job.applied;
-  toggleInput.addEventListener("click", (e) => e.stopPropagation());
-  toggleInput.addEventListener("change", async () => {
-    await fetchJSON(`/api/jobs/${job.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ applied: toggleInput.checked }),
-    });
-    refreshJobs();
-  });
-  toggleLabel.appendChild(toggleInput);
-  toggleLabel.appendChild(document.createTextNode("Applied"));
-  meta.appendChild(toggleLabel);
-
-  card.appendChild(meta);
-
-  const deleteBtn = document.createElement("button");
-  deleteBtn.className = "job-delete";
-  deleteBtn.textContent = "✕";
-  deleteBtn.title = "Delete job";
-  deleteBtn.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    try {
-      await fetchJSON(`/api/jobs/${job.id}`, { method: "DELETE" });
-      refreshJobs();
-    } catch (err) {
-      alert(err.message);
-    }
-  });
-  card.appendChild(deleteBtn);
 
   card.addEventListener("click", () => openJobModal(job));
 
@@ -426,7 +384,10 @@ function renderJobs(jobsData) {
   jobsById = Object.fromEntries(jobs.map((j) => [j.id, j]));
   const list = document.getElementById("jobs-list");
   list.innerHTML = "";
-  for (const job of jobs) {
+  // Already-applied jobs are almost certainly linked to a task on the
+  // calendar already - drop them from this drag source so it stays a short
+  // list of live opportunities, not a growing history.
+  for (const job of jobs.filter((j) => !j.applied)) {
     list.appendChild(jobCardElement(job));
   }
   attachJobsSortable(list);
@@ -435,24 +396,6 @@ function renderJobs(jobsData) {
 async function refreshJobs() {
   const jobsData = await fetchJSON("/api/jobs");
   renderJobs(jobsData);
-}
-
-function initAddJobForm() {
-  document.getElementById("add-job-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const name = document.getElementById("job-name").value.trim();
-    const url = document.getElementById("job-url").value.trim();
-    const company = document.getElementById("job-company").value.trim();
-    const companyUrl = document.getElementById("job-company-url").value.trim();
-    if (!name || !url) return;
-    await fetchJSON("/api/jobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, url, company: company || null, company_url: companyUrl || null }),
-    });
-    e.target.reset();
-    refreshJobs();
-  });
 }
 
 // --- job modal ---
@@ -708,7 +651,6 @@ async function init() {
   initNavControls();
   initModal();
   initAddTaskForm();
-  initAddJobForm();
   initJobModal();
   await refreshAll();
 }
