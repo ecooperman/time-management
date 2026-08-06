@@ -12,36 +12,43 @@
     <aside id="sidebar">
       <h1>Time Management</h1>
 
-      <form id="add-task-form">
-        <h2>New task</h2>
-        <label>
-          Title
-          <input type="text" id="task-title" required />
-        </label>
-        <label>
-          Category
-          <select id="task-category" required></select>
-        </label>
-        <label>
-          Estimate (minutes)
-          <input type="number" id="task-estimate" min="0" step="5" />
-        </label>
-        <label>
-          Notes
-          <textarea id="task-description" rows="2"></textarea>
-        </label>
-        <label class="checkbox-label">
-          <input type="checkbox" id="task-important" />
-          Mark as important
-        </label>
-        <button type="submit">Add to backlog</button>
-      </form>
+      <button type="button" id="sidebar-toggle" class="sidebar-toggle">
+        <span>New Task &amp; Backlog</span>
+        <span class="sidebar-toggle-chevron" aria-hidden="true">▸</span>
+      </button>
 
-      <h2>Backlog <span class="hint">(drag onto a day)</span></h2>
-      <div id="backlog-list" class="task-list" data-date=""></div>
+      <div id="sidebar-content">
+        <form id="add-task-form">
+          <h2>New task</h2>
+          <label>
+            Title
+            <input type="text" id="task-title" required />
+          </label>
+          <label>
+            Category
+            <select id="task-category" required></select>
+          </label>
+          <label>
+            Estimate (minutes)
+            <input type="number" id="task-estimate" min="0" step="5" />
+          </label>
+          <label>
+            Notes
+            <textarea id="task-description" rows="2"></textarea>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="task-important" />
+            Mark as important
+          </label>
+          <button type="submit">Add to backlog</button>
+        </form>
 
-      <h2>Jobs <span class="hint">(drag onto a day to create an apply task)</span></h2>
-      <div id="jobs-list" class="job-list"></div>
+        <h2>Backlog <span class="hint">(drag onto a day)</span></h2>
+        <div id="backlog-list" class="task-list" data-date=""></div>
+
+        <h2>Jobs <span class="hint">(drag onto a day to create an apply task)</span></h2>
+        <div id="jobs-list" class="job-list"></div>
+      </div>
     </aside>
 
     <main>

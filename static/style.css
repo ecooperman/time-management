@@ -32,32 +32,94 @@ body {
   background: var(--bg);
 }
 
+/* Mobile-first: sidebar and calendar stack vertically (the calendar first -
+   "what's today" is the reason to open the app - then the task form/backlog/
+   jobs below it) and the page scrolls normally, with room left at the
+   bottom for the fixed tab bar. Below 640px there's no side-by-side layout
+   for drag-and-drop to target anyway, which is why mobile uses tap-to-
+   schedule buttons instead (see .schedule-btn). */
 #app {
   display: flex;
-  /* Leaves room for the fixed bottom tab bar on mobile so it doesn't cover
-     the last inch of the sidebar/calendar; the bar goes back to a static
-     top row at the 640px breakpoint, where this is no longer needed. */
-  height: calc(100vh - var(--nav-height) - env(safe-area-inset-bottom, 0px));
+  flex-direction: column;
+  height: auto;
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 16px);
 }
 
 @media (min-width: 640px) {
   #app {
+    flex-direction: row;
     height: 100vh;
+    padding-bottom: 0;
   }
 }
 
 #sidebar {
-  width: 300px;
+  width: 100%;
   flex-shrink: 0;
   background: #fff;
-  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   padding: 16px;
-  overflow-y: auto;
+  order: 1;
+}
+
+@media (min-width: 640px) {
+  #sidebar {
+    width: 300px;
+    border-bottom: none;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    order: 0;
+  }
 }
 
 #sidebar h1 {
   font-size: 18px;
   margin: 0 0 16px;
+}
+
+/* Collapsed by default on mobile - the calendar is the reason to open the
+   app, and the form/backlog/jobs are a secondary action reachable in one
+   tap rather than something to scroll past every time. */
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sidebar-toggle-chevron {
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.sidebar-toggle.expanded .sidebar-toggle-chevron {
+  transform: rotate(90deg);
+}
+
+#sidebar-content {
+  display: none;
+  margin-top: 16px;
+}
+
+#sidebar-content.expanded {
+  display: block;
+}
+
+@media (min-width: 640px) {
+  .sidebar-toggle {
+    display: none;
+  }
+
+  #sidebar-content {
+    display: block;
+    margin-top: 0;
+  }
 }
 
 #sidebar h2 {
@@ -179,6 +241,31 @@ button {
   margin-right: 2px;
 }
 
+/* Mobile stand-in for dragging a backlog task or job onto a calendar day -
+   see the "why" note above #app. Desktop keeps drag-and-drop and never
+   shows this. */
+.schedule-btn {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--text);
+  color: #fff;
+  border: none;
+}
+
+.schedule-btn:disabled {
+  opacity: 0.6;
+}
+
+@media (min-width: 640px) {
+  .schedule-btn {
+    display: none;
+  }
+}
+
 .sortable-ghost {
   opacity: 0.35;
 }
@@ -188,11 +275,19 @@ button {
 }
 
 main {
-  flex: 1;
+  flex: none;
   display: flex;
   flex-direction: column;
   padding: 16px;
   min-width: 0;
+  order: 2;
+}
+
+@media (min-width: 640px) {
+  main {
+    flex: 1;
+    order: 0;
+  }
 }
 
 #toolbar {
@@ -205,8 +300,16 @@ main {
 }
 
 #view-toggle {
-  display: flex;
+  /* Only Day view fits below 640px, so there's nothing to toggle - Prev/
+     Today/Next (in #nav-controls) is the only navigation needed there. */
+  display: none;
   gap: 8px;
+}
+
+@media (min-width: 640px) {
+  #view-toggle {
+    display: flex;
+  }
 }
 
 #view-toggle button.active {
@@ -228,15 +331,27 @@ main {
 }
 
 #calendar {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
+  flex: none;
+  overflow: visible;
+}
+
+@media (min-width: 640px) {
+  #calendar {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
 }
 
 .cal-grid {
   display: grid;
   gap: 8px;
-  height: 100%;
+}
+
+@media (min-width: 640px) {
+  .cal-grid {
+    height: 100%;
+  }
 }
 
 #calendar.row-view .cal-grid {
@@ -291,9 +406,16 @@ main {
 }
 
 .day-col .task-list {
-  flex: 1;
+  flex: none;
   padding: 6px;
-  overflow-y: auto;
+  overflow-y: visible;
+}
+
+@media (min-width: 640px) {
+  .day-col .task-list {
+    flex: 1;
+    overflow-y: auto;
+  }
 }
 
 .modal-overlay {

@@ -4,7 +4,13 @@ let jobs = [];
 let jobsById = {};
 let activeTaskId = null;
 
-let currentView = "workWeek"; // 'day' | 'workWeek' | 'week' | 'month'
+// Multi-column views don't fit a phone-width screen, and with the sidebar
+// and calendar stacked (not side-by-side) below the 640px breakpoint,
+// there's nowhere for a drag between them to land anyway - so mobile always
+// starts in Day view, with tap-to-schedule buttons standing in for drag.
+const mobileMediaQuery = window.matchMedia("(max-width: 639px)");
+
+let currentView = mobileMediaQuery.matches ? "day" : "workWeek"; // 'day' | 'workWeek' | 'week' | 'month'
 let anchorDate = new Date();
 anchorDate.setHours(0, 0, 0, 0);
 
@@ -339,8 +345,13 @@ async function loadAndRenderCalendar() {
 function renderBacklog(tasks) {
   const list = document.getElementById("backlog-list");
   list.innerHTML = "";
+  const dateKey = toISODate(anchorDate);
+  const dayLabel = anchorDate.toLocaleDateString(undefined, { weekday: "short" });
   for (const task of tasks) {
-    list.appendChild(taskCardElement(task));
+    const card = taskCardElement(task);
+    // Hidden by CSS at 640px+ - drag-and-drop covers this on desktop.
+    card.appendChild(scheduleButton(dateKey, dayLabel, (d) => scheduleTaskToDay(task.id, d)));
+    list.appendChild(card);
   }
   attachSortable(list);
 }
@@ -348,6 +359,51 @@ function renderBacklog(tasks) {
 async function refreshBacklog() {
   const tasks = await fetchJSON("/api/tasks/backlog");
   renderBacklog(tasks);
+}
+
+// --- mobile tap-to-schedule (stands in for drag-and-drop below 640px,
+// where the backlog/jobs list and the calendar day aren't visible at the
+// same time) ---
+
+function scheduleButton(dateKey, dayLabel, onClick) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "schedule-btn";
+  btn.textContent = `+ Add to ${dayLabel}`;
+  btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    btn.disabled = true;
+    try {
+      await onClick(dateKey);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  return btn;
+}
+
+async function scheduleTaskToDay(taskId, dateKey) {
+  await fetchJSON(`/api/tasks/${taskId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ scheduled_date: `${dateKey}T00:00:00`, due_date: `${dateKey}T00:00:00` }),
+  });
+  await refreshAll();
+}
+
+async function createJobTaskOnDay(jobId, dateKey) {
+  const job = jobsById[jobId];
+  if (!job) return;
+  const task = await fetchJSON("/api/tasks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: `Apply to ${job.name}`,
+      category_id: getApplyingCategoryId(),
+      job_id: jobId,
+    }),
+  });
+  await scheduleTaskToDay(task.id, dateKey);
 }
 
 // --- jobs ---
@@ -384,11 +440,16 @@ function renderJobs(jobsData) {
   jobsById = Object.fromEntries(jobs.map((j) => [j.id, j]));
   const list = document.getElementById("jobs-list");
   list.innerHTML = "";
+  const dateKey = toISODate(anchorDate);
+  const dayLabel = anchorDate.toLocaleDateString(undefined, { weekday: "short" });
   // Already-applied jobs are almost certainly linked to a task on the
   // calendar already - drop them from this drag source so it stays a short
   // list of live opportunities, not a growing history.
   for (const job of jobs.filter((j) => !j.applied)) {
-    list.appendChild(jobCardElement(job));
+    const card = jobCardElement(job);
+    // Hidden by CSS at 640px+ - drag-and-drop covers this on desktop.
+    card.appendChild(scheduleButton(dateKey, dayLabel, (d) => createJobTaskOnDay(job.id, d)));
+    list.appendChild(card);
   }
   attachJobsSortable(list);
 }
@@ -477,6 +538,18 @@ function initViewToggle() {
     });
   });
   setActiveViewButton(currentView);
+
+  // Crossing into mobile width (e.g. rotating a tablet, resizing a desktop
+  // window) forces Day view, since that's the only one the layout supports
+  // below 640px. Doesn't force the other direction - if you resize back up
+  // you keep whatever view you're on and can pick a wider one manually.
+  mobileMediaQuery.addEventListener("change", (e) => {
+    if (e.matches && currentView !== "day") {
+      currentView = "day";
+      setActiveViewButton(currentView);
+      loadAndRenderCalendar();
+    }
+  });
 }
 
 function initNavControls() {
@@ -642,6 +715,27 @@ function initAddTaskForm() {
     });
     e.target.reset();
     refreshBacklog();
+    collapseSidebar();
+  });
+}
+
+// --- mobile sidebar collapse (the toggle itself is CSS-hidden at 640px+,
+// so this never runs there) ---
+
+function collapseSidebar() {
+  document.getElementById("sidebar-content").classList.remove("expanded");
+  document.getElementById("sidebar-toggle").classList.remove("expanded");
+}
+
+function initSidebarToggle() {
+  const toggle = document.getElementById("sidebar-toggle");
+  const content = document.getElementById("sidebar-content");
+  toggle.addEventListener("click", () => {
+    const expanded = content.classList.toggle("expanded");
+    toggle.classList.toggle("expanded", expanded);
+    if (expanded) {
+      document.getElementById("task-title").focus();
+    }
   });
 }
 
@@ -652,6 +746,7 @@ async function init() {
   initModal();
   initAddTaskForm();
   initJobModal();
+  initSidebarToggle();
   await refreshAll();
 }
 
