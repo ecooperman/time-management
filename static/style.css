@@ -337,7 +337,16 @@ main {
 }
 
 #nav-jump {
+  /* iOS Safari's native date-input chrome (calendar icon + placeholder
+     segments) can fail to render - falling back to a blank gray box - if
+     the control is left to size itself via flexbox "width: auto" alone.
+     An explicit min-width and flex-shrink: 0 keep it from ever collapsing
+     that far. Not reproducible in desktop/emulated mobile testing, since
+     that renders the date picker with the browser's own control, not
+     iOS's. */
   width: auto;
+  min-width: 150px;
+  flex-shrink: 0;
   margin-top: 0;
   padding: 6px 8px;
 }
