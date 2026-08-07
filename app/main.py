@@ -1,3 +1,6 @@
+import subprocess
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
@@ -12,7 +15,31 @@ from .seed import seed_categories
 with SessionLocal() as db:
     seed_categories(db)
 
+
+def _get_git_sha() -> str:
+    """Short commit hash the running app was deployed from, read straight
+    from the repo on disk (the deploy pulls a real git checkout) - no CI
+    wiring needed, and it can never drift from what's actually running.
+    """
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=Path(__file__).resolve().parent.parent,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        return "unknown"
+
+
+GIT_SHA = _get_git_sha()
+
 app = FastAPI(title="Time Management")
+
+
+@app.get("/api/version")
+def get_version():
+    return {"version": GIT_SHA}
 
 
 @app.middleware("http")

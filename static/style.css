@@ -336,19 +336,49 @@ main {
   flex-wrap: wrap;
 }
 
-#nav-jump {
-  /* iOS Safari's native date-input chrome (calendar icon + placeholder
-     segments) can fail to render - falling back to a blank gray box - if
-     the control is left to size itself via flexbox "width: auto" alone.
-     An explicit min-width and flex-shrink: 0 keep it from ever collapsing
-     that far. Not reproducible in desktop/emulated mobile testing, since
-     that renders the date picker with the browser's own control, not
-     iOS's. */
-  width: auto;
-  min-width: 150px;
-  flex-shrink: 0;
-  margin-top: 0;
-  padding: 6px 8px;
+/* iOS Safari's native <input type="date"> chrome (calendar icon +
+   placeholder segments) has proven unreliable to render inside a flex
+   toolbar - it can fall back to a blank gray box with no icon or text,
+   and isn't reproducible in desktop/emulated mobile testing since that
+   renders the control with the browser's own picker, not iOS's. Rather
+   than keep fighting that rendering, #nav-jump-btn is the only thing
+   actually visible - a normal button, guaranteed to render like every
+   other nav button - and it triggers the real (but invisible) date input's
+   native picker programmatically. */
+#nav-jump-btn {
+  font-size: 16px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#app-version {
+  position: fixed;
+  right: 6px;
+  /* Below 640px, .app-nav is fixed to the bottom of the screen - sit just
+     above it rather than behind/under its content. */
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0) + 2px);
+  font-size: 9px;
+  color: var(--muted);
+  opacity: 0.6;
+  z-index: 51;
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  #app-version {
+    /* .app-nav is back in normal document flow up here, so there's nothing
+       fixed at the bottom of the screen to avoid. */
+    bottom: 4px;
+  }
 }
 
 #nav-title {

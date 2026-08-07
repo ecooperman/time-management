@@ -564,7 +564,15 @@ function initNavControls() {
     anchorDate.setHours(0, 0, 0, 0);
     loadAndRenderCalendar();
   });
-  document.getElementById("nav-jump").addEventListener("change", (e) => {
+  const jumpInput = document.getElementById("nav-jump");
+  document.getElementById("nav-jump-btn").addEventListener("click", () => {
+    if (jumpInput.showPicker) {
+      jumpInput.showPicker();
+    } else {
+      jumpInput.focus();
+    }
+  });
+  jumpInput.addEventListener("change", (e) => {
     if (!e.target.value) return;
     // Parse the "YYYY-MM-DD" input value as a local date, not UTC (which
     // `new Date("YYYY-MM-DD")` would do and could shift the day backward
