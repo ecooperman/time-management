@@ -160,7 +160,10 @@ input, select, textarea {
   width: 100%;
   margin-top: 4px;
   padding: 6px 8px;
-  font-size: 14px;
+  /* iOS Safari auto-zooms the page when focusing a field with a computed
+     font-size under 16px - keep this at 16px (not smaller) to prevent that,
+     even though 14px would otherwise match the rest of the UI's type scale. */
+  font-size: 16px;
   border: 1px solid var(--border);
   border-radius: 6px;
   font-family: inherit;
@@ -595,6 +598,16 @@ main {
   text-decoration: none;
   font-size: 11px;
   font-weight: 600;
+}
+
+/* app-nav-link is also used on a <button> (the refresh action) - undo the
+   global button reset so it matches the plain <a> nav items. */
+button.app-nav-link {
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-radius: 0;
+  font-family: inherit;
 }
 
 .app-nav-icon {
