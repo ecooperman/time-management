@@ -304,15 +304,23 @@ main {
 }
 
 #view-toggle {
-  /* Only Day view fits below 640px, so there's nothing to toggle - Prev/
-     Today/Next (in #nav-controls) is the only navigation needed there. */
-  display: none;
+  display: flex;
   gap: 8px;
 }
 
+/* Only Day and 2 Day fit below 640px - Work Week/Week/Month need more
+   columns than a phone width can show. */
+#view-toggle button[data-view="workWeek"],
+#view-toggle button[data-view="week"],
+#view-toggle button[data-view="month"] {
+  display: none;
+}
+
 @media (min-width: 640px) {
-  #view-toggle {
-    display: flex;
+  #view-toggle button[data-view="workWeek"],
+  #view-toggle button[data-view="week"],
+  #view-toggle button[data-view="month"] {
+    display: inline-block;
   }
 }
 
@@ -326,6 +334,12 @@ main {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+#nav-jump {
+  width: auto;
+  margin-top: 0;
+  padding: 6px 8px;
 }
 
 #nav-title {

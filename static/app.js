@@ -67,6 +67,7 @@ function isoDateTime(date) {
 
 function getVisibleDays(view, anchor) {
   if (view === "day") return [new Date(anchor)];
+  if (view === "twoDay") return [new Date(anchor), addDays(anchor, 1)];
   if (view === "workWeek") {
     const monday = addDays(startOfWeek(anchor), 1);
     return [0, 1, 2, 3, 4].map((i) => addDays(monday, i));
@@ -90,6 +91,8 @@ function getVisibleDays(view, anchor) {
 function shiftAnchor(direction) {
   if (currentView === "day") {
     anchorDate = addDays(anchorDate, direction);
+  } else if (currentView === "twoDay") {
+    anchorDate = addDays(anchorDate, 2 * direction);
   } else if (currentView === "workWeek" || currentView === "week") {
     anchorDate = addDays(anchorDate, 7 * direction);
   } else {
@@ -540,11 +543,12 @@ function initViewToggle() {
   setActiveViewButton(currentView);
 
   // Crossing into mobile width (e.g. rotating a tablet, resizing a desktop
-  // window) forces Day view, since that's the only one the layout supports
-  // below 640px. Doesn't force the other direction - if you resize back up
-  // you keep whatever view you're on and can pick a wider one manually.
+  // window) forces Day view, since Day and 2 Day are the only ones the
+  // layout supports below 640px. Doesn't force the other direction - if you
+  // resize back up you keep whatever view you're on and can pick a wider
+  // one manually.
   mobileMediaQuery.addEventListener("change", (e) => {
-    if (e.matches && currentView !== "day") {
+    if (e.matches && currentView !== "day" && currentView !== "twoDay") {
       currentView = "day";
       setActiveViewButton(currentView);
       loadAndRenderCalendar();
@@ -558,6 +562,16 @@ function initNavControls() {
   document.getElementById("nav-today").addEventListener("click", () => {
     anchorDate = new Date();
     anchorDate.setHours(0, 0, 0, 0);
+    loadAndRenderCalendar();
+  });
+  document.getElementById("nav-jump").addEventListener("change", (e) => {
+    if (!e.target.value) return;
+    // Parse the "YYYY-MM-DD" input value as a local date, not UTC (which
+    // `new Date("YYYY-MM-DD")` would do and could shift the day backward
+    // in any timezone behind UTC) - matches how dates are handled elsewhere.
+    const [y, m, d] = e.target.value.split("-").map(Number);
+    anchorDate = new Date(y, m - 1, d);
+    e.target.value = "";
     loadAndRenderCalendar();
   });
 }
