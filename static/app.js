@@ -564,23 +564,57 @@ function initNavControls() {
     anchorDate.setHours(0, 0, 0, 0);
     loadAndRenderCalendar();
   });
-  const jumpInput = document.getElementById("nav-jump");
-  document.getElementById("nav-jump-btn").addEventListener("click", () => {
-    if (jumpInput.showPicker) {
-      jumpInput.showPicker();
-    } else {
-      jumpInput.focus();
-    }
+}
+
+// --- jump-to-date picker (self-contained, not a native <input type="date">
+// - see the CSS comment on #nav-jump-btn for why) ---
+
+let jumpModalMonth = new Date();
+
+function renderJumpModalGrid() {
+  const grid = document.getElementById("jump-modal-grid");
+  grid.innerHTML = "";
+  const days = getVisibleDays("month", jumpModalMonth);
+  const todayKey = toISODate(new Date());
+  for (const day of days) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = day.getDate();
+    if (day.getMonth() !== jumpModalMonth.getMonth()) btn.classList.add("other-month");
+    if (toISODate(day) === todayKey) btn.classList.add("today");
+    btn.addEventListener("click", () => {
+      anchorDate = new Date(day);
+      closeJumpModal();
+      loadAndRenderCalendar();
+    });
+    grid.appendChild(btn);
+  }
+  document.getElementById("jump-modal-title").textContent = jumpModalMonth.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
   });
-  jumpInput.addEventListener("change", (e) => {
-    if (!e.target.value) return;
-    // Parse the "YYYY-MM-DD" input value as a local date, not UTC (which
-    // `new Date("YYYY-MM-DD")` would do and could shift the day backward
-    // in any timezone behind UTC) - matches how dates are handled elsewhere.
-    const [y, m, d] = e.target.value.split("-").map(Number);
-    anchorDate = new Date(y, m - 1, d);
-    e.target.value = "";
-    loadAndRenderCalendar();
+}
+
+function openJumpModal() {
+  jumpModalMonth = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
+  renderJumpModalGrid();
+  document.getElementById("jump-modal").classList.remove("hidden");
+}
+
+function closeJumpModal() {
+  document.getElementById("jump-modal").classList.add("hidden");
+}
+
+function initJumpModal() {
+  document.getElementById("nav-jump-btn").addEventListener("click", openJumpModal);
+  document.getElementById("jump-modal-close").addEventListener("click", closeJumpModal);
+  document.getElementById("jump-modal-prev").addEventListener("click", () => {
+    jumpModalMonth = new Date(jumpModalMonth.getFullYear(), jumpModalMonth.getMonth() - 1, 1);
+    renderJumpModalGrid();
+  });
+  document.getElementById("jump-modal-next").addEventListener("click", () => {
+    jumpModalMonth = new Date(jumpModalMonth.getFullYear(), jumpModalMonth.getMonth() + 1, 1);
+    renderJumpModalGrid();
   });
 }
 
@@ -768,6 +802,7 @@ async function init() {
   initModal();
   initAddTaskForm();
   initJobModal();
+  initJumpModal();
   initSidebarToggle();
   await refreshAll();
 }

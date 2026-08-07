@@ -83,8 +83,15 @@
           <button id="nav-prev">&larr;</button>
           <button id="nav-today">Today</button>
           <button id="nav-next">&rarr;</button>
-          <button type="button" id="nav-jump-btn" title="Jump to date">📅</button>
-          <input type="date" id="nav-jump" aria-label="Jump to date" class="visually-hidden" />
+          <button type="button" id="nav-jump-btn" title="Jump to date">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </button>
           <span id="nav-title"></span>
         </div>
       </div>
@@ -187,6 +194,23 @@
         <button id="job-modal-save">Save</button>
         <button id="job-modal-delete" class="danger">Delete</button>
       </div>
+    </div>
+  </div>
+
+  <div id="jump-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <button id="jump-modal-close" class="modal-close">&times;</button>
+      <h2>Jump to date</h2>
+
+      <div class="jump-modal-header">
+        <button type="button" id="jump-modal-prev">&larr;</button>
+        <span id="jump-modal-title"></span>
+        <button type="button" id="jump-modal-next">&rarr;</button>
+      </div>
+      <div class="jump-modal-weekdays">
+        <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+      </div>
+      <div id="jump-modal-grid" class="jump-modal-grid"></div>
     </div>
   </div>
 
