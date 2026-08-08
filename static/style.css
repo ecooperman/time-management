@@ -350,6 +350,11 @@ main {
   justify-content: center;
 }
 
+#nav-jump-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 .jump-modal-header {
   display: flex;
   align-items: center;
@@ -713,6 +718,11 @@ button.app-nav-link {
 .app-nav-icon {
   font-size: 20px;
   line-height: 1;
+}
+
+.app-nav-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .app-nav-link.active {
