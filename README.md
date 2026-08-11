@@ -111,6 +111,19 @@ upgrade head`, and restarts the service. Needs these repo secrets set once
   can't be deleted while any task still links to it. Clicking a job card
   (anywhere except its URL link, Applied checkbox, or delete button) opens
   an edit modal for all of its fields.
+- Jobs can be bulk-imported from a CSV export of the
+  [job-application-chrome-extension](../job-application-chrome-extension)
+  fit-scoring tool ("Import Jobs from CSV" on the Jobs page). Expected
+  columns: `url, title, company, salary, tier, summary, matched, gaps,
+  strengths, scored_at, jd_text` (`salary` is free text - often blank, since
+  most postings don't disclose it; `tier` is one of Weak/Possible/Good/Strong
+  and shows as a colored badge on job cards, the task modal, and the Jobs
+  page, where the rest of the scoring detail - salary, summary,
+  matched/gaps/strengths, and the full job description - is viewable by
+  expanding a card). Matching is by
+  `url`: importing a job that's already here refreshes only the scoring
+  fields, never `applied` or anything edited by hand, so re-running the
+  extension and re-importing is always safe to repeat.
 - The calendar defaults to Work Week view on load.
 - A task can be set to repeat daily from its modal (only once it's been
   scheduled on a day - repeating needs a start date). Occurrences for days

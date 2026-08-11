@@ -415,6 +415,14 @@ async function createJobTaskOnDay(jobId, dateKey) {
 // and drag the job. Full details (URL, company, applied status) and
 // creating new jobs live on the jobs.html admin page; clicking a card here
 // still opens the same edit modal for a quick in-context change.
+function tierBadge(tier) {
+  if (!tier) return null;
+  const badge = document.createElement("span");
+  badge.className = "tier-badge tier-" + tier.toLowerCase();
+  badge.textContent = tier;
+  return badge;
+}
+
 function jobCardElement(job) {
   const card = document.createElement("div");
   card.className = "job-card";
@@ -423,6 +431,8 @@ function jobCardElement(job) {
   const title = document.createElement("div");
   title.className = "job-title";
   title.textContent = job.name;
+  const tier = tierBadge(job.tier);
+  if (tier) title.appendChild(tier);
   card.appendChild(title);
 
   const company = companyNode(job);
@@ -431,6 +441,14 @@ function jobCardElement(job) {
     companyLine.className = "job-company";
     companyLine.appendChild(company);
     card.appendChild(companyLine);
+  }
+
+  if (job.salary) {
+    const salaryLine = document.createElement("div");
+    salaryLine.className = "job-salary";
+    salaryLine.textContent = job.salary;
+    salaryLine.title = job.salary; // full text on hover - these get long with multiple tiers/locations
+    card.appendChild(salaryLine);
   }
 
   card.addEventListener("click", () => openJobModal(job));
@@ -654,6 +672,11 @@ function openModal(task) {
       companyEl.appendChild(document.createTextNode(" at "));
       companyEl.appendChild(company);
     }
+
+    const tierEl = document.getElementById("modal-linked-job-tier");
+    tierEl.innerHTML = "";
+    const tier = tierBadge(task.job.tier);
+    if (tier) tierEl.appendChild(tier);
 
     document.getElementById("modal-linked-job-applied").innerHTML = task.job.applied
       ? '<span class="applied-badge">Applied</span>'

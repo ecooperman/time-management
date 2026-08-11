@@ -33,6 +33,77 @@ function labeledInput(labelText, type, value) {
   return { label, input };
 }
 
+function tierBadge(tier) {
+  if (!tier) return null;
+  const badge = document.createElement("span");
+  badge.className = "tier-badge tier-" + tier.toLowerCase();
+  badge.textContent = tier;
+  return badge;
+}
+
+function scoreDetailBlock(job) {
+  if (!job.tier && !job.salary && !job.summary && !job.matched && !job.gaps && !job.strengths && !job.jd_text) {
+    return null;
+  }
+
+  const block = document.createElement("div");
+  block.className = "job-admin-score";
+
+  if (job.salary) {
+    const salary = document.createElement("p");
+    salary.className = "job-admin-score-salary";
+    salary.textContent = job.salary;
+    block.appendChild(salary);
+  }
+
+  if (job.summary) {
+    const p = document.createElement("p");
+    p.className = "job-admin-score-summary";
+    p.textContent = job.summary;
+    block.appendChild(p);
+  }
+
+  for (const [label, value] of [
+    ["Matched", job.matched],
+    ["Strengths", job.strengths],
+    ["Gaps", job.gaps],
+  ]) {
+    if (!value) continue;
+    const section = document.createElement("div");
+    section.className = "job-admin-score-section";
+    const heading = document.createElement("div");
+    heading.className = "job-admin-score-label";
+    heading.textContent = label;
+    section.appendChild(heading);
+    const ul = document.createElement("ul");
+    for (const item of value.split("|")) {
+      if (!item.trim()) continue;
+      const li = document.createElement("li");
+      li.textContent = item.trim();
+      ul.appendChild(li);
+    }
+    section.appendChild(ul);
+    block.appendChild(section);
+  }
+
+  if (job.jd_text) {
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "job-admin-jd-toggle";
+    toggle.textContent = "Show full job description";
+    const jdText = document.createElement("pre");
+    jdText.className = "job-admin-jd-text hidden";
+    jdText.textContent = job.jd_text;
+    toggle.addEventListener("click", () => {
+      const showing = jdText.classList.toggle("hidden");
+      toggle.textContent = showing ? "Show full job description" : "Hide full job description";
+    });
+    block.append(toggle, jdText);
+  }
+
+  return block;
+}
+
 function jobAdminCardElement(job) {
   const card = document.createElement("div");
   card.className = "job-admin-card" + (job.applied ? " applied" : "");
@@ -50,6 +121,9 @@ function jobAdminCardElement(job) {
   title.className = "job-admin-summary-title";
   title.textContent = job.name;
   summary.appendChild(title);
+
+  const tier = tierBadge(job.tier);
+  if (tier) summary.appendChild(tier);
 
   if (job.applied) {
     const badge = document.createElement("span");
@@ -74,6 +148,9 @@ function jobAdminCardElement(job) {
   });
 
   card.append(summary, details);
+
+  const scoreBlock = scoreDetailBlock(job);
+  if (scoreBlock) details.appendChild(scoreBlock);
 
   const fields = document.createElement("div");
   fields.className = "job-admin-fields";
@@ -203,5 +280,29 @@ function initAddJobForm() {
   });
 }
 
+function initImportJobs() {
+  document.getElementById("import-jobs-file").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      // No Content-Type header here on purpose - the browser sets the
+      // multipart boundary itself from the FormData body; setting it
+      // manually would break the upload.
+      const result = await fetchJSON("/api/jobs/import", { method: "POST", body: formData });
+      const parts = [`${result.created} new`, `${result.updated} updated`];
+      if (result.skipped) parts.push(`${result.skipped} skipped`);
+      showMessage(`Import complete: ${parts.join(", ")}.`, "success");
+      loadJobs();
+    } catch (err) {
+      showMessage(err.message, "error");
+    } finally {
+      e.target.value = "";
+    }
+  });
+}
+
 initAddJobForm();
+initImportJobs();
 loadJobs();

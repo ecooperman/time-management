@@ -1,6 +1,8 @@
+import csv
+import io
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas
@@ -12,6 +14,19 @@ router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 @router.get("", response_model=List[schemas.Job])
 def list_jobs(db: Session = Depends(get_db)):
     return crud.get_jobs(db)
+
+
+@router.post("/import", response_model=schemas.JobImportResult)
+async def import_jobs(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")  # -sig strips a BOM if Excel/Sheets added one
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="Could not read file as UTF-8 text")
+    reader = csv.DictReader(io.StringIO(text))
+    if reader.fieldnames is None or "url" not in reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV is missing a 'url' column")
+    return crud.import_jobs_from_csv(db, list(reader))
 
 
 @router.post("", response_model=schemas.Job)

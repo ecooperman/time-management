@@ -639,10 +639,24 @@ main {
   font-weight: 600;
 }
 
+.job-card .job-title .tier-badge {
+  margin-left: 6px;
+}
+
 .job-card .job-company {
   font-size: 12px;
   color: var(--muted);
   margin-top: 1px;
+}
+
+.job-card .job-salary {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e7a34;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .job-card .job-company a,
@@ -823,6 +837,106 @@ button.app-nav-link {
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 20px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.add-job-toggle.secondary {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.tier-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.tier-strong {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.tier-good {
+  color: #0f766e;
+  background: #ccfbf1;
+}
+
+.tier-possible {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.tier-weak {
+  color: var(--muted);
+  background: var(--bg);
+}
+
+.job-admin-score {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.job-admin-score-salary {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e7a34;
+  margin: 0 0 8px;
+}
+
+.job-admin-score-summary {
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+.job-admin-score-section {
+  margin-bottom: 8px;
+}
+
+.job-admin-score-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.job-admin-score-section ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.job-admin-score-section li {
+  margin-bottom: 2px;
+}
+
+.job-admin-jd-toggle {
+  font-size: 12px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.job-admin-jd-text {
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--bg);
+  padding: 10px;
+  border-radius: 6px;
 }
 
 .job-admin-card {

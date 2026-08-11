@@ -43,14 +43,49 @@ class JobUpdate(BaseModel):
     company: Optional[str] = None
     company_url: Optional[str] = None
     applied: Optional[bool] = None
+    salary: Optional[str] = None
+    tier: Optional[str] = None
+    summary: Optional[str] = None
+    matched: Optional[str] = None
+    gaps: Optional[str] = None
+    strengths: Optional[str] = None
+    scored_at: Optional[datetime] = None
+    jd_text: Optional[str] = None
 
 
-class Job(JobBase):
+class JobSummary(JobBase):
+    """Lightweight job shape embedded in Task responses - omits the large
+    scoring-detail fields (summary/matched/gaps/strengths/jd_text) so a
+    calendar/backlog fetch full of job-linked tasks doesn't balloon in size
+    carrying job descriptions nothing on that screen needs. tier is small
+    and worth showing on a task card, so it stays.
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     applied: bool
+    tier: Optional[str] = None
     created_at: datetime
+
+
+class Job(JobSummary):
+    """Full job shape, scoring detail included - used by /api/jobs and the
+    job detail modal, where that detail is actually wanted."""
+
+    salary: Optional[str] = None
+    summary: Optional[str] = None
+    matched: Optional[str] = None
+    gaps: Optional[str] = None
+    strengths: Optional[str] = None
+    scored_at: Optional[datetime] = None
+    jd_text: Optional[str] = None
+
+
+class JobImportResult(BaseModel):
+    created: int
+    updated: int
+    skipped: int
 
 
 class TaskBase(BaseModel):
@@ -93,7 +128,7 @@ class Task(TaskBase):
     sort_order: int
     created_at: datetime
     completed_at: Optional[datetime] = None
-    job: Optional[Job] = None
+    job: Optional[JobSummary] = None
     repeat_daily: bool = False
     repeat_until: Optional[datetime] = None
     series_id: Optional[int] = None

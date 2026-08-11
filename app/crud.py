@@ -108,6 +108,64 @@ def update_job(db: Session, job_id: int, updates: schemas.JobUpdate):
     return db_job
 
 
+def import_jobs_from_csv(db: Session, rows: list) -> schemas.JobImportResult:
+    """Bulk-upsert jobs from a scored-jobs CSV export (the job-scoring
+    Chrome extension). Matches existing jobs by url: if found, refreshes
+    only the scoring fields (tier/summary/matched/gaps/strengths/scored_at/
+    jd_text) - applied and anything else stay exactly as they were, since
+    re-scoring shouldn't touch your tracked application progress. Rows
+    missing a url or title are skipped.
+    """
+    created = updated = skipped = 0
+    for row in rows:
+        url = (row.get("url") or "").strip()
+        if not url:
+            skipped += 1
+            continue
+
+        scored_at = None
+        raw_scored_at = (row.get("scored_at") or "").strip()
+        if raw_scored_at:
+            try:
+                scored_at = datetime.fromisoformat(raw_scored_at.replace("Z", "+00:00")).replace(tzinfo=None)
+            except ValueError:
+                scored_at = None
+
+        score_data = {
+            "salary": (row.get("salary") or "").strip() or None,
+            "tier": (row.get("tier") or "").strip() or None,
+            "summary": (row.get("summary") or "").strip() or None,
+            "matched": (row.get("matched") or "").strip() or None,
+            "gaps": (row.get("gaps") or "").strip() or None,
+            "strengths": (row.get("strengths") or "").strip() or None,
+            "scored_at": scored_at,
+            "jd_text": (row.get("jd_text") or "").strip() or None,
+        }
+
+        existing = db.query(models.Job).filter(models.Job.url == url).first()
+        if existing:
+            for field, value in score_data.items():
+                setattr(existing, field, value)
+            updated += 1
+        else:
+            title = (row.get("title") or "").strip()
+            if not title:
+                skipped += 1
+                continue
+            db.add(
+                models.Job(
+                    name=title,
+                    url=url,
+                    company=(row.get("company") or "").strip() or None,
+                    **score_data,
+                )
+            )
+            created += 1
+
+    db.commit()
+    return schemas.JobImportResult(created=created, updated=updated, skipped=skipped)
+
+
 def delete_job(db: Session, job_id: int) -> str:
     """Returns 'deleted', 'not_found', or 'in_use'."""
     db_job = get_job(db, job_id)

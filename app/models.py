@@ -32,6 +32,20 @@ class Job(Base):
     company = Column(String, nullable=True)
     company_url = Column(String, nullable=True)
     applied = Column(Boolean, nullable=False, default=False)
+
+    # Populated by bulk CSV import from the job-scoring Chrome extension;
+    # null for jobs entered by hand. Re-importing a URL that's already here
+    # refreshes these fields only - applied and everything else is left
+    # alone, since re-scoring shouldn't touch your tracked progress.
+    salary = Column(String, nullable=True)
+    tier = Column(String, nullable=True)
+    summary = Column(String, nullable=True)
+    matched = Column(String, nullable=True)
+    gaps = Column(String, nullable=True)
+    strengths = Column(String, nullable=True)
+    scored_at = Column(DateTime, nullable=True)
+    jd_text = Column(String, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     tasks = relationship("Task", back_populates="job")
