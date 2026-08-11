@@ -948,7 +948,8 @@ button.app-nav-link {
 }
 
 .job-admin-card.applied {
-  background: #f9fafb;
+  background: #e6f4ea;
+  border-color: #b7dfc0;
 }
 
 #add-job-form.job-admin-card {
@@ -982,15 +983,6 @@ button.app-nav-link {
   font-size: 14px;
 }
 
-.job-admin-applied-badge {
-  flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: #1e7a34;
-  background: #e6f4ea;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
 
 .job-admin-chevron {
   flex-shrink: 0;

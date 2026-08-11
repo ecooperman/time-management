@@ -122,15 +122,11 @@ function jobAdminCardElement(job) {
   title.textContent = job.name;
   summary.appendChild(title);
 
+  // The badge is reserved for tier (resume-fit strength) - "applied" is
+  // shown by tinting the whole card green instead (see .job-admin-card.applied),
+  // so the two signals don't compete for the same visual slot.
   const tier = tierBadge(job.tier);
   if (tier) summary.appendChild(tier);
-
-  if (job.applied) {
-    const badge = document.createElement("span");
-    badge.className = "job-admin-applied-badge";
-    badge.textContent = "Applied";
-    summary.appendChild(badge);
-  }
 
   const chevron = document.createElement("span");
   chevron.className = "job-admin-chevron";
