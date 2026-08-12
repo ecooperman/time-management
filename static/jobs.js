@@ -304,13 +304,19 @@ function jobAdminCardElement(job) {
 
 const TIER_RANK = { Strong: 0, Good: 1, Possible: 2, Weak: 3 };
 
+// First-time default: only Strong/Good shown. Once a visitor touches the
+// filter buttons, their actual choice is what's stored from then on - this
+// only applies before jobFilterHiddenTiers exists in localStorage at all.
+const DEFAULT_HIDDEN_TIERS = ["Possible", "Weak", "Unscored", "Unclear"];
+
 let allJobs = [];
 
 function loadJobFilterState() {
-  let hiddenTiers = [];
+  let hiddenTiers = DEFAULT_HIDDEN_TIERS;
   let sort = "tier";
   try {
-    hiddenTiers = JSON.parse(localStorage.getItem("jobFilterHiddenTiers") || "[]");
+    const stored = localStorage.getItem("jobFilterHiddenTiers");
+    hiddenTiers = stored === null ? DEFAULT_HIDDEN_TIERS : JSON.parse(stored);
     sort = localStorage.getItem("jobFilterSort") || "tier";
   } catch (e) {
     // ignore malformed/unavailable localStorage, fall back to defaults
