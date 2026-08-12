@@ -5,6 +5,14 @@ After=network.target
 [Service]
 User=deploy
 WorkingDirectory=/opt/apps/time-management
+# Resume generation feature (app/resume_gen.py) - set real values here
+# directly on the droplet (never commit them): sudo systemctl edit
+# time-management, or edit this file in place after copying it in.
+# INTERNAL_API_TOKEN must match the value set on resume-admin.service.
+# RESUME_ADMIN_URL defaults to http://127.0.0.1:8041 if unset, which is
+# correct for this droplet - only override it if that ever changes.
+Environment=INTERNAL_API_TOKEN=
+Environment=ANTHROPIC_API_KEY=
 ExecStart=/opt/apps/time-management/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8010
 Restart=on-failure
 RestartSec=3

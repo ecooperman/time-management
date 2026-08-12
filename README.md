@@ -21,6 +21,23 @@ upgrade head` creates it (and the three default categories get seeded in on
 first app startup). This only needs to be run once for a fresh install; see
 below for how schema changes are handled from here on.
 
+### Environment variables (resume generation)
+
+The "Generate Resume" feature on the Jobs page (see the Notes section below)
+needs three environment variables - unset, the feature fails with a clear
+error rather than crashing the app:
+
+| Variable | Required for | Notes |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Calling Claude to tailor the resume/cover letter | Standard Anthropic API key |
+| `INTERNAL_API_TOKEN` | Talking to the `resume` app's internal API | Must be the exact same value set on that app's `INTERNAL_API_TOKEN` - see its README |
+| `RESUME_ADMIN_URL` | Finding the `resume` app's admin API | Optional - defaults to `http://127.0.0.1:8041`, correct for the shared droplet |
+
+Locally, export these in your shell before running the app. On the droplet,
+set them directly in `/etc/systemd/system/time-management.service` (never
+commit real values - see `deploy/time-management.service` for the
+placeholder lines and `DEPLOYMENT.md`).
+
 ## Schema changes (Alembic)
 
 Schema is owned by migrations under `migrations/versions/`, not by wiping
@@ -124,6 +141,20 @@ upgrade head`, and restarts the service. Needs these repo secrets set once
   `url`: importing a job that's already here refreshes only the scoring
   fields, never `applied` or anything edited by hand, so re-running the
   extension and re-importing is always safe to repeat.
+- Each job card on the Jobs page can generate a tailored resume + cover
+  letter ("Generate Resume + Cover Letter", or "Generate Resumes for
+  Filtered Jobs" to do a whole filtered batch at once, with a confirmation
+  modal listing exactly which jobs first). This fetches the live
+  `resume.yaml` from the `resume` app, asks Claude to tailor it to that
+  job's stored JD text (reordering/trimming/rephrasing only - never
+  inventing experience) plus write a cover letter, and stores the result on
+  the job. "Download PDF"/"Download DOCX" then render on demand through the
+  `resume` app's own Jinja2/Playwright/python-docx pipeline (see
+  `app/resume_gen.py` and the `resume` app's `app/render.py`/`app/admin.py`)
+  - the output is styled like the real resume, not a plain-text dump.
+  Regenerating overwrites the previous result for that job. See
+  "Environment variables" above for what this needs configured; the
+  `resume` app must be running and reachable for it to work.
 - The calendar defaults to Work Week view on load.
 - A task can be set to repeat daily from its modal (only once it's been
   scheduled on a day - repeating needs a start date). Occurrences for days

@@ -46,6 +46,15 @@ class Job(Base):
     scored_at = Column(DateTime, nullable=True)
     jd_text = Column(String, nullable=True)
 
+    # Populated by the "Generate Resume" feature: a tailored copy of
+    # resume.yaml (fetched live from the resume app, then tailored to this
+    # job's jd_text by Claude) plus a matching cover letter. Rendered to
+    # PDF/DOCX on demand via the resume app, not stored as binary here -
+    # see app/resume_gen.py. Regenerating overwrites all three together.
+    generated_resume_yaml = Column(String, nullable=True)
+    generated_cover_letter = Column(String, nullable=True)
+    resume_generated_at = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     tasks = relationship("Task", back_populates="job")

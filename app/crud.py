@@ -97,6 +97,10 @@ def get_job(db: Session, job_id: int):
     return db.query(models.Job).filter(models.Job.id == job_id).first()
 
 
+def get_jobs_by_ids(db: Session, job_ids: list[int]):
+    return db.query(models.Job).filter(models.Job.id.in_(job_ids)).all()
+
+
 def update_job(db: Session, job_id: int, updates: schemas.JobUpdate):
     db_job = get_job(db, job_id)
     if db_job is None:

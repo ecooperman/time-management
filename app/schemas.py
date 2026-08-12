@@ -81,11 +81,42 @@ class Job(JobSummary):
     scored_at: Optional[datetime] = None
     jd_text: Optional[str] = None
 
+    # generated_resume_yaml is deliberately NOT exposed here - it's large
+    # and only ever needed server-side (to render a PDF/DOCX on request).
+    # The cover letter is small text the UI displays directly, so it's fine
+    # to send as-is; the timestamp is how the UI knows whether a resume
+    # exists yet at all (and lets it show "generated 2 days ago").
+    generated_cover_letter: Optional[str] = None
+    resume_generated_at: Optional[datetime] = None
+
 
 class JobImportResult(BaseModel):
     created: int
     updated: int
     skipped: int
+
+
+class ResumeBatchRequest(BaseModel):
+    job_ids: List[int]
+
+
+class ResumeBatchStarted(BaseModel):
+    batch_id: str
+
+
+class ResumeBatchJobResult(BaseModel):
+    job_id: int
+    name: str
+    ok: bool
+    error: Optional[str] = None
+
+
+class ResumeBatchStatus(BaseModel):
+    batch_id: str
+    total: int
+    done: int
+    status: str  # "running" | "done"
+    results: List[ResumeBatchJobResult]
 
 
 class TaskBase(BaseModel):

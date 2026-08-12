@@ -1113,3 +1113,114 @@ button.app-nav-link {
     width: auto;
   }
 }
+
+/* Resume generation - per-job card section (see resumeActionsBlock in
+   jobs.js) and the bulk-generate confirmation/progress modal. */
+.job-admin-resume {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.job-admin-resume-generate {
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+.job-admin-resume-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+
+.job-admin-resume-downloads {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.job-admin-resume-download {
+  font-size: 13px;
+  color: var(--applying-color);
+  text-decoration: underline;
+}
+
+.job-admin-cover-letter {
+  margin-top: 8px;
+  position: relative;
+}
+
+.job-admin-cover-letter-text {
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--bg);
+  padding: 10px;
+  padding-right: 70px;
+  border-radius: 6px;
+  margin: 0;
+}
+
+.job-admin-cover-letter-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+#bulk-resume-modal-box {
+  width: 460px;
+}
+
+.bulk-resume-job-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0 0 14px;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
+.bulk-resume-job-list li {
+  margin-bottom: 4px;
+}
+
+.progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--applying-color);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.bulk-resume-results {
+  max-height: 180px;
+  overflow-y: auto;
+  margin: 0 0 14px;
+  padding-left: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.bulk-resume-results li {
+  padding: 2px 0;
+}
+
+.bulk-resume-result-ok {
+  color: #1e7a34;
+}
+
+.bulk-resume-result-error {
+  color: #b3261e;
+}

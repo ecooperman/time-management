@@ -104,6 +104,84 @@ function scoreDetailBlock(job) {
   return block;
 }
 
+function resumeActionsBlock(job) {
+  const block = document.createElement("div");
+  block.className = "job-admin-resume";
+
+  const generateBtn = document.createElement("button");
+  generateBtn.type = "button";
+  generateBtn.className = "job-admin-resume-generate";
+  const idleLabel = job.resume_generated_at ? "Regenerate Resume + Cover Letter" : "Generate Resume + Cover Letter";
+  generateBtn.textContent = idleLabel;
+  generateBtn.addEventListener("click", async () => {
+    generateBtn.disabled = true;
+    generateBtn.textContent = "Generating... (about a minute)";
+    try {
+      await fetchJSON(`/api/jobs/${job.id}/generate-resume`, { method: "POST" });
+      showMessage(`Generated a resume for "${job.name}".`, "success");
+      loadJobs();
+    } catch (err) {
+      showMessage(err.message, "error");
+      generateBtn.disabled = false;
+      generateBtn.textContent = idleLabel;
+    }
+  });
+  block.appendChild(generateBtn);
+
+  if (job.resume_generated_at) {
+    const meta = document.createElement("p");
+    meta.className = "job-admin-resume-meta";
+    meta.textContent = `Generated ${new Date(job.resume_generated_at).toLocaleString()}`;
+    block.appendChild(meta);
+
+    const downloads = document.createElement("div");
+    downloads.className = "job-admin-resume-downloads";
+    const pdfLink = document.createElement("a");
+    pdfLink.href = `/api/jobs/${job.id}/resume.pdf`;
+    pdfLink.className = "job-admin-resume-download";
+    pdfLink.textContent = "Download PDF";
+    const docxLink = document.createElement("a");
+    docxLink.href = `/api/jobs/${job.id}/resume.docx`;
+    docxLink.className = "job-admin-resume-download";
+    docxLink.textContent = "Download DOCX";
+    downloads.append(pdfLink, docxLink);
+    block.appendChild(downloads);
+
+    if (job.generated_cover_letter) {
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "job-admin-jd-toggle";
+      toggle.textContent = "Show cover letter";
+
+      const letterBox = document.createElement("div");
+      letterBox.className = "job-admin-cover-letter hidden";
+
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "job-admin-cover-letter-copy";
+      copyBtn.textContent = "Copy";
+      copyBtn.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(job.generated_cover_letter);
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+      });
+
+      const letterText = document.createElement("pre");
+      letterText.className = "job-admin-cover-letter-text";
+      letterText.textContent = job.generated_cover_letter;
+
+      letterBox.append(copyBtn, letterText);
+      toggle.addEventListener("click", () => {
+        const showing = letterBox.classList.toggle("hidden");
+        toggle.textContent = showing ? "Show cover letter" : "Hide cover letter";
+      });
+      block.append(toggle, letterBox);
+    }
+  }
+
+  return block;
+}
+
 function jobAdminCardElement(job) {
   const card = document.createElement("div");
   card.className = "job-admin-card" + (job.applied ? " applied" : "");
@@ -147,6 +225,8 @@ function jobAdminCardElement(job) {
 
   const scoreBlock = scoreDetailBlock(job);
   if (scoreBlock) details.appendChild(scoreBlock);
+
+  details.appendChild(resumeActionsBlock(job));
 
   const fields = document.createElement("div");
   fields.className = "job-admin-fields";
@@ -391,7 +471,109 @@ function initImportJobs() {
   });
 }
 
+function initBulkResumeGeneration() {
+  const openBtn = document.getElementById("bulk-generate-btn");
+  const modal = document.getElementById("bulk-resume-modal");
+  const closeBtn = document.getElementById("bulk-resume-modal-close");
+  const cancelBtn = document.getElementById("bulk-resume-cancel");
+  const confirmBtn = document.getElementById("bulk-resume-confirm");
+  const countEl = document.getElementById("bulk-resume-modal-count");
+  const listEl = document.getElementById("bulk-resume-job-list");
+  const progressEl = document.getElementById("bulk-resume-progress");
+  const progressText = document.getElementById("bulk-resume-progress-text");
+  const progressFill = document.getElementById("bulk-resume-progress-fill");
+  const resultsEl = document.getElementById("bulk-resume-results");
+
+  function resetModal() {
+    progressEl.classList.add("hidden");
+    progressFill.style.width = "0%";
+    resultsEl.innerHTML = "";
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = "Generate";
+    cancelBtn.classList.remove("hidden");
+    cancelBtn.textContent = "Cancel";
+  }
+
+  function closeModal() {
+    modal.classList.add("hidden");
+    resetModal();
+  }
+
+  openBtn.addEventListener("click", () => {
+    const visible = visibleSortedJobs();
+    if (visible.length === 0) {
+      showMessage("No jobs match the current filter - nothing to generate.", "error");
+      return;
+    }
+    resetModal();
+    listEl.innerHTML = "";
+    for (const job of visible) {
+      const li = document.createElement("li");
+      li.textContent = job.company ? `${job.name} - ${job.company}` : job.name;
+      listEl.appendChild(li);
+    }
+    const already = visible.filter((j) => j.resume_generated_at).length;
+    countEl.textContent =
+      `This will generate a resume + cover letter for ${visible.length} job${visible.length === 1 ? "" : "s"}` +
+      (already ? `, overwriting ${already} that already ${already === 1 ? "has" : "have"} one.` : ".");
+    modal.classList.remove("hidden");
+  });
+
+  closeBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", closeModal);
+
+  async function pollBulkStatus(batchId) {
+    let status;
+    try {
+      status = await fetchJSON(`/api/jobs/generate-resumes-bulk/${batchId}`);
+    } catch (err) {
+      showMessage(err.message, "error");
+      return;
+    }
+
+    const pct = status.total ? Math.round((status.done / status.total) * 100) : 0;
+    progressFill.style.width = `${pct}%`;
+    progressText.textContent = `${status.done} of ${status.total} done`;
+    resultsEl.innerHTML = "";
+    for (const r of status.results) {
+      const li = document.createElement("li");
+      li.className = r.ok ? "bulk-resume-result-ok" : "bulk-resume-result-error";
+      li.textContent = r.ok ? `✓ ${r.name}` : `✗ ${r.name}: ${r.error}`;
+      resultsEl.appendChild(li);
+    }
+
+    if (status.status === "done") {
+      confirmBtn.textContent = "Done";
+      cancelBtn.textContent = "Close";
+      cancelBtn.classList.remove("hidden");
+      loadJobs();
+    } else {
+      setTimeout(() => pollBulkStatus(batchId), 2000);
+    }
+  }
+
+  confirmBtn.addEventListener("click", async () => {
+    const jobIds = visibleSortedJobs().map((j) => j.id);
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "Starting...";
+    cancelBtn.classList.add("hidden");
+    try {
+      const { batch_id } = await fetchJSON("/api/jobs/generate-resumes-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_ids: jobIds }),
+      });
+      progressEl.classList.remove("hidden");
+      pollBulkStatus(batch_id);
+    } catch (err) {
+      showMessage(err.message, "error");
+      closeModal();
+    }
+  });
+}
+
 initAddJobForm();
 initImportJobs();
 initJobFilters();
+initBulkResumeGeneration();
 loadJobs();

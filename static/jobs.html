@@ -81,7 +81,29 @@
     </div>
     <p id="job-filter-count" class="note"></p>
 
+    <button id="bulk-generate-btn" type="button" class="add-job-toggle secondary">
+      Generate Resumes for Filtered Jobs
+    </button>
+
     <div id="job-rows"></div>
+  </div>
+
+  <div id="bulk-resume-modal" class="modal-overlay hidden">
+    <div class="modal" id="bulk-resume-modal-box">
+      <button id="bulk-resume-modal-close" class="modal-close">&times;</button>
+      <h3>Generate resumes for these jobs?</h3>
+      <p class="note" id="bulk-resume-modal-count"></p>
+      <ul id="bulk-resume-job-list" class="bulk-resume-job-list"></ul>
+      <div id="bulk-resume-progress" class="hidden">
+        <p id="bulk-resume-progress-text" class="note"></p>
+        <div class="progress-bar"><div id="bulk-resume-progress-fill" class="progress-bar-fill"></div></div>
+        <ul id="bulk-resume-results" class="bulk-resume-results"></ul>
+      </div>
+      <div class="modal-actions">
+        <button id="bulk-resume-confirm" type="button">Generate</button>
+        <button id="bulk-resume-cancel" type="button">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <div id="app-version"></div>
