@@ -875,6 +875,71 @@ button.app-nav-link {
   background: var(--bg);
 }
 
+.tier-unscored {
+  color: var(--muted);
+  background: #fff;
+  border: 1px dashed var(--border);
+}
+
+#job-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+#job-tier-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tier-filter-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 0.1s ease;
+}
+
+.tier-filter-btn.inactive {
+  opacity: 0.35;
+}
+
+/* .tier-weak's default gray-on-gray reads fine on a white card, but as a
+   border-less filter pill it was nearly invisible against the page
+   background - give it its own higher-contrast treatment here. */
+.tier-filter-btn.tier-weak {
+  color: #374151;
+  background: #d7dce2;
+}
+
+#job-sort-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-bottom: 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+#job-sort-select {
+  width: auto;
+  margin-top: 0;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+#job-filter-count {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
 .job-admin-score {
   margin-bottom: 14px;
   padding-bottom: 14px;

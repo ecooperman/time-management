@@ -219,20 +219,112 @@ function jobAdminCardElement(job) {
   return card;
 }
 
-async function loadJobs() {
-  const jobs = await fetchJSON("/api/jobs");
+// --- filtering + sorting (client-side, over whatever /api/jobs last
+// returned - no need to re-fetch just because the filter/sort changed) ---
+
+const TIER_RANK = { Strong: 0, Good: 1, Possible: 2, Weak: 3 };
+
+let allJobs = [];
+
+function loadJobFilterState() {
+  let hiddenTiers = [];
+  let sort = "tier";
+  try {
+    hiddenTiers = JSON.parse(localStorage.getItem("jobFilterHiddenTiers") || "[]");
+    sort = localStorage.getItem("jobFilterSort") || "tier";
+  } catch (e) {
+    // ignore malformed/unavailable localStorage, fall back to defaults
+  }
+  return { hiddenTiers: new Set(hiddenTiers), sort };
+}
+
+const jobFilterState = loadJobFilterState();
+
+function saveJobFilterState() {
+  localStorage.setItem("jobFilterHiddenTiers", JSON.stringify(Array.from(jobFilterState.hiddenTiers)));
+  localStorage.setItem("jobFilterSort", jobFilterState.sort);
+}
+
+function jobTierKey(job) {
+  return job.tier || "Unscored";
+}
+
+function visibleSortedJobs() {
+  const visible = allJobs.filter((j) => !jobFilterState.hiddenTiers.has(jobTierKey(j)));
+  if (jobFilterState.sort === "tier") {
+    // Best fit first, then newest first within each tier - explicit on the
+    // created_at tie-break rather than leaning on server order, so this
+    // stays correct even if the server's default ordering ever changes.
+    visible.sort((a, b) => {
+      if (a.applied !== b.applied) return a.applied ? 1 : -1;
+      const rankA = a.tier in TIER_RANK ? TIER_RANK[a.tier] : 4;
+      const rankB = b.tier in TIER_RANK ? TIER_RANK[b.tier] : 4;
+      if (rankA !== rankB) return rankA - rankB;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+  }
+  // "newest" keeps server order as-is (already applied-last, newest-first).
+  return visible;
+}
+
+function renderJobList() {
   const container = document.getElementById("job-rows");
   container.innerHTML = "";
-  if (jobs.length === 0) {
+  const visible = visibleSortedJobs();
+
+  const countEl = document.getElementById("job-filter-count");
+  countEl.textContent =
+    visible.length === allJobs.length
+      ? `${allJobs.length} job${allJobs.length === 1 ? "" : "s"}`
+      : `Showing ${visible.length} of ${allJobs.length} jobs`;
+
+  if (allJobs.length === 0) {
     const empty = document.createElement("p");
     empty.className = "note";
     empty.textContent = "No jobs yet - add one above to get started.";
     container.appendChild(empty);
     return;
   }
-  for (const job of jobs) {
+  if (visible.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "note";
+    empty.textContent = "No jobs match the current filter.";
+    container.appendChild(empty);
+    return;
+  }
+  for (const job of visible) {
     container.appendChild(jobAdminCardElement(job));
   }
+}
+
+async function loadJobs() {
+  allJobs = await fetchJSON("/api/jobs");
+  renderJobList();
+}
+
+function initJobFilters() {
+  for (const btn of document.querySelectorAll(".tier-filter-btn")) {
+    const tier = btn.dataset.tier;
+    btn.classList.toggle("inactive", jobFilterState.hiddenTiers.has(tier));
+    btn.addEventListener("click", () => {
+      if (jobFilterState.hiddenTiers.has(tier)) {
+        jobFilterState.hiddenTiers.delete(tier);
+      } else {
+        jobFilterState.hiddenTiers.add(tier);
+      }
+      btn.classList.toggle("inactive", jobFilterState.hiddenTiers.has(tier));
+      saveJobFilterState();
+      renderJobList();
+    });
+  }
+
+  const sortSelect = document.getElementById("job-sort-select");
+  sortSelect.value = jobFilterState.sort;
+  sortSelect.addEventListener("change", () => {
+    jobFilterState.sort = sortSelect.value;
+    saveJobFilterState();
+    renderJobList();
+  });
 }
 
 function initAddJobForm() {
@@ -301,4 +393,5 @@ function initImportJobs() {
 
 initAddJobForm();
 initImportJobs();
+initJobFilters();
 loadJobs();

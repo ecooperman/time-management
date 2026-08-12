@@ -63,6 +63,24 @@
       </div>
     </form>
 
+    <div id="job-filter-bar">
+      <div id="job-tier-filters">
+        <button type="button" class="tier-filter-btn tier-strong" data-tier="Strong">Strong</button>
+        <button type="button" class="tier-filter-btn tier-good" data-tier="Good">Good</button>
+        <button type="button" class="tier-filter-btn tier-possible" data-tier="Possible">Possible</button>
+        <button type="button" class="tier-filter-btn tier-weak" data-tier="Weak">Weak</button>
+        <button type="button" class="tier-filter-btn tier-unscored" data-tier="Unscored">Unscored</button>
+      </div>
+      <label id="job-sort-label">
+        Sort
+        <select id="job-sort-select">
+          <option value="tier" selected>Best fit first</option>
+          <option value="newest">Newest first</option>
+        </select>
+      </label>
+    </div>
+    <p id="job-filter-count" class="note"></p>
+
     <div id="job-rows"></div>
   </div>
 
