@@ -156,10 +156,13 @@ def import_jobs_from_csv(db: Session, rows: list, owner_id: Optional[int] = None
     """Bulk-upsert jobs from a scored-jobs CSV export (the job-scoring
     Chrome extension). Matches existing jobs by url: if found, refreshes
     only the scoring fields (tier/summary/matched/gaps/strengths/scored_at/
-    jd_text) - applied, owner, and anything else stay exactly as they were,
-    since re-scoring shouldn't touch your tracked application progress or
-    reassign whose job it is. owner_id is only ever set on newly-created
-    jobs from this batch. Rows missing a url or title are skipped.
+    jd_text) - applied and everything else stay exactly as they were, since
+    re-scoring shouldn't touch your tracked application progress. owner_id
+    is set on newly-created jobs, and backfilled onto existing jobs that
+    don't have one yet (e.g. jobs imported before this feature existed) -
+    but never overwrites a job that's already got an owner, so a later
+    re-import can't silently reassign whose job it is. Rows missing a url
+    or title are skipped.
     """
     created = updated = skipped = 0
     for row in rows:
@@ -191,6 +194,13 @@ def import_jobs_from_csv(db: Session, rows: list, owner_id: Optional[int] = None
         if existing:
             for field, value in score_data.items():
                 setattr(existing, field, value)
+            # Fill in the owner if it's not already set (e.g. a job that
+            # predates this feature, or was imported with "No owner"), but
+            # never overwrite one that's already assigned - if two people's
+            # CSVs ever both contain the same URL, whoever's already tagged
+            # it keeps it rather than a later re-import silently stealing it.
+            if owner_id is not None and existing.owner_id is None:
+                existing.owner_id = owner_id
             updated += 1
         else:
             title = (row.get("title") or "").strip()
