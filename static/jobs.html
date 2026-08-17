@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Manage Jobs - Time Management</title>
+  <link rel="stylesheet" href="https://static.evancooperman.com/theme.css" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -18,25 +19,25 @@
         Planner
       </a>
       <a href="/jobs.html" class="app-nav-link active">
-        <span class="app-nav-icon" aria-hidden="true">💼</span>
+        <span class="app-nav-icon" aria-hidden="true" data-icon="briefcase"></span>
         Jobs
       </a>
       <a href="/admin.html" class="app-nav-link">
-        <span class="app-nav-icon" aria-hidden="true">🏷️</span>
+        <span class="app-nav-icon" aria-hidden="true" data-icon="tag"></span>
         Settings
       </a>
       <button type="button" class="app-nav-link" onclick="location.reload()">
-        <span class="app-nav-icon" aria-hidden="true">🔄</span>
+        <span class="app-nav-icon" aria-hidden="true" data-icon="refresh"></span>
         Refresh
       </button>
     </nav>
 
-    <div id="admin-message" class="admin-message hidden"></div>
+    <div id="page-message" class="page-message hidden"></div>
 
-    <button id="show-add-job" type="button" class="add-job-toggle">+ Add New Job Opportunity</button>
+    <button id="show-add-job" type="button" class="add-toggle">+ Add New Job Opportunity</button>
 
     <div id="import-jobs-row">
-      <label for="import-jobs-file" class="add-job-toggle secondary">Import Jobs from CSV</label>
+      <label for="import-jobs-file" class="add-toggle secondary">Import Jobs from CSV</label>
       <input type="file" id="import-jobs-file" accept=".csv" class="visually-hidden" />
       <label id="import-owner-label">
         as
@@ -46,7 +47,7 @@
       </label>
     </div>
 
-    <form id="add-job-form" class="job-admin-card hidden">
+    <form id="add-job-form" class="item-card job-admin-card hidden">
       <div class="job-admin-fields">
         <label>
           Name
@@ -97,7 +98,7 @@
     </div>
     <p id="job-filter-count" class="note"></p>
 
-    <button id="bulk-generate-btn" type="button" class="add-job-toggle secondary">
+    <button id="bulk-generate-btn" type="button" class="add-toggle secondary">
       Generate Resumes for Filtered Jobs
     </button>
 
@@ -124,7 +125,8 @@
 
   <div id="app-version"></div>
 
-  <script src="/icons.js"></script>
+  <script src="https://static.evancooperman.com/theme.js"></script>
+  <script src="https://static.evancooperman.com/icons.js"></script>
   <script src="/jobs.js"></script>
   <script src="/version.js"></script>
 </body>

@@ -16,13 +16,6 @@ async function fetchJSON(url, options) {
   return res.json();
 }
 
-function showMessage(text, kind) {
-  const el = document.getElementById("admin-message");
-  el.textContent = text;
-  el.className = "admin-message " + kind;
-  setTimeout(() => el.classList.add("hidden"), 4000);
-}
-
 function labeledInput(labelText, type, value) {
   const label = document.createElement("label");
   label.appendChild(document.createTextNode(labelText));
@@ -118,10 +111,10 @@ function resumeActionsBlock(job) {
     generateBtn.textContent = "Generating... (about a minute)";
     try {
       await fetchJSON(`/api/jobs/${job.id}/generate-resume`, { method: "POST" });
-      showMessage(`Generated a resume for "${job.name}".`, "success");
+      Theme.showMessage(`Generated a resume for "${job.name}".`, "success");
       loadJobs();
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
       generateBtn.disabled = false;
       generateBtn.textContent = idleLabel;
     }
@@ -184,7 +177,7 @@ function resumeActionsBlock(job) {
 
 function jobAdminCardElement(job) {
   const card = document.createElement("div");
-  card.className = "job-admin-card" + (job.applied ? " applied" : "");
+  card.className = "item-card job-admin-card" + (job.applied ? " applied" : "");
   card.dataset.jobId = job.id;
 
   // Collapsed by default - just enough to identify the job at a glance.
@@ -192,11 +185,11 @@ function jobAdminCardElement(job) {
   // becomes a persisted field on the job and an API call here instead.
   const summary = document.createElement("button");
   summary.type = "button";
-  summary.className = "job-admin-summary";
+  summary.className = "item-summary";
   summary.setAttribute("aria-expanded", "false");
 
   const title = document.createElement("span");
-  title.className = "job-admin-summary-title";
+  title.className = "item-summary-title";
   title.textContent = job.name;
   summary.appendChild(title);
 
@@ -210,19 +203,15 @@ function jobAdminCardElement(job) {
   if (tier) summary.appendChild(tier);
 
   const chevron = document.createElement("span");
-  chevron.className = "job-admin-chevron";
+  chevron.className = "item-chevron";
   chevron.textContent = "▸";
   chevron.setAttribute("aria-hidden", "true");
   summary.appendChild(chevron);
 
   const details = document.createElement("div");
-  details.className = "job-admin-details hidden";
+  details.className = "item-details job-admin-details hidden";
 
-  summary.addEventListener("click", () => {
-    const expanded = card.classList.toggle("expanded");
-    details.classList.toggle("hidden", !expanded);
-    summary.setAttribute("aria-expanded", String(expanded));
-  });
+  Theme.wireAccordionToggle(card, summary, details);
 
   card.append(summary, details);
 
@@ -267,7 +256,7 @@ function jobAdminCardElement(job) {
     const nameVal = name.input.value.trim();
     const urlVal = url.input.value.trim();
     if (!nameVal || !urlVal) {
-      showMessage("Name and URL are required.", "error");
+      Theme.showMessage("Name and URL are required.", "error");
       return;
     }
     try {
@@ -283,10 +272,10 @@ function jobAdminCardElement(job) {
           applied: appliedInput.checked,
         }),
       });
-      showMessage(`Saved "${nameVal}".`, "success");
+      Theme.showMessage(`Saved "${nameVal}".`, "success");
       loadJobs();
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
     }
   });
   actions.appendChild(saveBtn);
@@ -299,10 +288,10 @@ function jobAdminCardElement(job) {
     if (!confirm(`Delete "${job.name}"?`)) return;
     try {
       await fetchJSON(`/api/jobs/${job.id}`, { method: "DELETE" });
-      showMessage(`Deleted "${job.name}".`, "success");
+      Theme.showMessage(`Deleted "${job.name}".`, "success");
       loadJobs();
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
     }
   });
   actions.appendChild(deleteBtn);
@@ -564,10 +553,10 @@ function initAddJobForm() {
       form.reset();
       form.classList.add("hidden");
       showBtn.classList.remove("hidden");
-      showMessage("Job added.", "success");
+      Theme.showMessage("Job added.", "success");
       loadJobs();
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
     }
   });
 }
@@ -588,10 +577,10 @@ function initImportJobs() {
       const result = await fetchJSON("/api/jobs/import", { method: "POST", body: formData });
       const parts = [`${result.created} new`, `${result.updated} updated`];
       if (result.skipped) parts.push(`${result.skipped} skipped`);
-      showMessage(`Import complete: ${parts.join(", ")}.`, "success");
+      Theme.showMessage(`Import complete: ${parts.join(", ")}.`, "success");
       loadJobs();
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
     } finally {
       e.target.value = "";
     }
@@ -629,7 +618,7 @@ function initBulkResumeGeneration() {
   openBtn.addEventListener("click", () => {
     const visible = visibleSortedJobs();
     if (visible.length === 0) {
-      showMessage("No jobs match the current filter - nothing to generate.", "error");
+      Theme.showMessage("No jobs match the current filter - nothing to generate.", "error");
       return;
     }
     resetModal();
@@ -654,7 +643,7 @@ function initBulkResumeGeneration() {
     try {
       status = await fetchJSON(`/api/jobs/generate-resumes-bulk/${batchId}`);
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
       return;
     }
 
@@ -693,7 +682,7 @@ function initBulkResumeGeneration() {
       progressEl.classList.remove("hidden");
       pollBulkStatus(batch_id);
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
       closeModal();
     }
   });

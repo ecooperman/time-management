@@ -16,13 +16,6 @@ async function fetchJSON(url, options) {
   return res.json();
 }
 
-function showMessage(text, kind) {
-  const el = document.getElementById("admin-message");
-  el.textContent = text;
-  el.className = "admin-message " + kind;
-  setTimeout(() => el.classList.add("hidden"), 4000);
-}
-
 function categoryRowElement(category) {
   const row = document.createElement("div");
   row.className = "category-row";
@@ -46,10 +39,10 @@ function categoryRowElement(category) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: nameInput.value, color: colorInput.value }),
       });
-      showMessage(`Saved "${nameInput.value}".`, "success");
+      Theme.showMessage(`Saved "${nameInput.value}".`, "success");
       loadCategories();
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
     }
   });
 
@@ -61,10 +54,10 @@ function categoryRowElement(category) {
     if (!confirm(`Delete category "${category.name}"?`)) return;
     try {
       await fetchJSON(`/api/categories/${category.id}`, { method: "DELETE" });
-      showMessage(`Deleted "${category.name}".`, "success");
+      Theme.showMessage(`Deleted "${category.name}".`, "success");
       loadCategories();
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
     }
   });
 
@@ -96,10 +89,10 @@ function initAddForm() {
         body: JSON.stringify({ name: nameInput.value, color: colorInput.value }),
       });
       nameInput.value = "";
-      showMessage("Category added.", "success");
+      Theme.showMessage("Category added.", "success");
       loadCategories();
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
     }
   });
 }
@@ -127,10 +120,10 @@ function personRowElement(person) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: nameInput.value, color: colorInput.value }),
       });
-      showMessage(`Saved "${nameInput.value}".`, "success");
+      Theme.showMessage(`Saved "${nameInput.value}".`, "success");
       loadPeople();
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
     }
   });
 
@@ -142,10 +135,10 @@ function personRowElement(person) {
     if (!confirm(`Delete "${person.name}"?`)) return;
     try {
       await fetchJSON(`/api/people/${person.id}`, { method: "DELETE" });
-      showMessage(`Deleted "${person.name}".`, "success");
+      Theme.showMessage(`Deleted "${person.name}".`, "success");
       loadPeople();
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
     }
   });
 
@@ -177,10 +170,10 @@ function initAddPersonForm() {
         body: JSON.stringify({ name: nameInput.value, color: colorInput.value }),
       });
       nameInput.value = "";
-      showMessage("Person added.", "success");
+      Theme.showMessage("Person added.", "success");
       loadPeople();
     } catch (err) {
-      showMessage(err.message, "error");
+      Theme.showMessage(err.message, "error");
     }
   });
 }
