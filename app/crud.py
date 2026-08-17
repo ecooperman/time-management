@@ -81,6 +81,46 @@ def delete_category(db: Session, category_id: int) -> str:
     return "deleted"
 
 
+def get_people(db: Session):
+    return db.query(models.Person).order_by(models.Person.name).all()
+
+
+def create_person(db: Session, person: schemas.PersonCreate):
+    db_person = models.Person(**person.model_dump())
+    db.add(db_person)
+    db.commit()
+    db.refresh(db_person)
+    return db_person
+
+
+def get_person(db: Session, person_id: int):
+    return db.query(models.Person).filter(models.Person.id == person_id).first()
+
+
+def update_person(db: Session, person_id: int, updates: schemas.PersonUpdate):
+    db_person = get_person(db, person_id)
+    if db_person is None:
+        return None
+    for field, value in updates.model_dump(exclude_unset=True).items():
+        setattr(db_person, field, value)
+    db.commit()
+    db.refresh(db_person)
+    return db_person
+
+
+def delete_person(db: Session, person_id: int) -> str:
+    """Returns 'deleted', 'not_found', or 'in_use'."""
+    db_person = get_person(db, person_id)
+    if db_person is None:
+        return "not_found"
+    job_count = db.query(models.Job).filter(models.Job.owner_id == person_id).count()
+    if job_count > 0:
+        return "in_use"
+    db.delete(db_person)
+    db.commit()
+    return "deleted"
+
+
 def get_jobs(db: Session):
     return db.query(models.Job).order_by(models.Job.applied, models.Job.created_at.desc()).all()
 
@@ -112,13 +152,14 @@ def update_job(db: Session, job_id: int, updates: schemas.JobUpdate):
     return db_job
 
 
-def import_jobs_from_csv(db: Session, rows: list) -> schemas.JobImportResult:
+def import_jobs_from_csv(db: Session, rows: list, owner_id: Optional[int] = None) -> schemas.JobImportResult:
     """Bulk-upsert jobs from a scored-jobs CSV export (the job-scoring
     Chrome extension). Matches existing jobs by url: if found, refreshes
     only the scoring fields (tier/summary/matched/gaps/strengths/scored_at/
-    jd_text) - applied and anything else stay exactly as they were, since
-    re-scoring shouldn't touch your tracked application progress. Rows
-    missing a url or title are skipped.
+    jd_text) - applied, owner, and anything else stay exactly as they were,
+    since re-scoring shouldn't touch your tracked application progress or
+    reassign whose job it is. owner_id is only ever set on newly-created
+    jobs from this batch. Rows missing a url or title are skipped.
     """
     created = updated = skipped = 0
     for row in rows:
@@ -161,6 +202,7 @@ def import_jobs_from_csv(db: Session, rows: list) -> schemas.JobImportResult:
                     name=title,
                     url=url,
                     company=(row.get("company") or "").strip() or None,
+                    owner_id=owner_id,
                     **score_data,
                 )
             )

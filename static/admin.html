@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Manage Categories - Time Management</title>
+  <title>Settings - Time Management</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div id="admin-app">
     <div id="admin-header">
-      <h1>Manage Categories</h1>
+      <h1>Settings</h1>
     </div>
 
     <nav class="app-nav">
@@ -23,7 +23,7 @@
       </a>
       <a href="/admin.html" class="app-nav-link active">
         <span class="app-nav-icon" aria-hidden="true">🏷️</span>
-        Categories
+        Settings
       </a>
       <button type="button" class="app-nav-link" onclick="location.reload()">
         <span class="app-nav-icon" aria-hidden="true">🔄</span>
@@ -33,12 +33,27 @@
 
     <div id="admin-message" class="admin-message hidden"></div>
 
+    <h2 class="admin-section-heading">Categories</h2>
     <div id="category-rows"></div>
 
     <form id="add-category-form" class="category-row new-category-row">
       <input type="color" id="new-category-color" value="#4C7CAF" />
       <input type="text" id="new-category-name" placeholder="New category name" required />
       <button type="submit">Add category</button>
+    </form>
+
+    <h2 class="admin-section-heading">People</h2>
+    <p class="note">
+      Tag jobs by who they belong to (e.g. you and a partner sharing this
+      app). Purely a label - everyone can still see every job, use the
+      owner filter on the Jobs page to narrow the view.
+    </p>
+    <div id="person-rows"></div>
+
+    <form id="add-person-form" class="category-row new-category-row">
+      <input type="color" id="new-person-color" value="#4C7CAF" />
+      <input type="text" id="new-person-name" placeholder="New person's name" required />
+      <button type="submit">Add person</button>
     </form>
   </div>
 

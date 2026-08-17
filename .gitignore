@@ -2,4 +2,5 @@ venv/
 __pycache__/
 *.pyc
 tasks.db
+tasks.db.bak
 .DS_Store

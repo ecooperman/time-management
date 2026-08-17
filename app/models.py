@@ -23,6 +23,20 @@ class Category(Base):
     tasks = relationship("Task", back_populates="category")
 
 
+class Person(Base):
+    """A household member jobs can be tagged with (e.g. you and your
+    spouse sharing this app). Purely a filter/label - nobody's data is
+    actually restricted by it, so there's no auth tied to this at all."""
+
+    __tablename__ = "people"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+    color = Column(String, nullable=False)
+
+    jobs = relationship("Job", back_populates="owner")
+
+
 class Job(Base):
     __tablename__ = "jobs"
 
@@ -32,6 +46,11 @@ class Job(Base):
     company = Column(String, nullable=True)
     company_url = Column(String, nullable=True)
     applied = Column(Boolean, nullable=False, default=False)
+
+    # Who this job belongs to (see Person above). Nullable - jobs imported
+    # before this feature existed, or added without picking anyone, are
+    # simply unowned rather than defaulted to a guess.
+    owner_id = Column(Integer, ForeignKey("people.id"), nullable=True)
 
     # Populated by bulk CSV import from the job-scoring Chrome extension;
     # null for jobs entered by hand. Re-importing a URL that's already here
@@ -58,6 +77,7 @@ class Job(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     tasks = relationship("Task", back_populates="job")
+    owner = relationship("Person", back_populates="jobs")
 
 
 class Task(Base):

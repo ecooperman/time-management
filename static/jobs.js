@@ -200,6 +200,9 @@ function jobAdminCardElement(job) {
   title.textContent = job.name;
   summary.appendChild(title);
 
+  const owner = ownerTag(job);
+  if (owner) summary.appendChild(owner);
+
   // The badge is reserved for tier (resume-fit strength) - "applied" is
   // shown by tinting the whole card green instead (see .job-admin-card.applied),
   // so the two signals don't compete for the same visual slot.
@@ -235,7 +238,15 @@ function jobAdminCardElement(job) {
   const company = labeledInput("Company", "text", job.company);
   const url = labeledInput("URL", "url", job.url);
   const companyUrl = labeledInput("Company URL", "url", job.company_url);
-  fields.append(name.label, company.label, url.label, companyUrl.label);
+
+  const ownerLabel = document.createElement("label");
+  ownerLabel.appendChild(document.createTextNode("Owner"));
+  const ownerSelect = document.createElement("select");
+  populatePersonSelect(ownerSelect, "No owner");
+  ownerSelect.value = job.owner_id != null ? String(job.owner_id) : "";
+  ownerLabel.appendChild(ownerSelect);
+
+  fields.append(name.label, company.label, url.label, companyUrl.label, ownerLabel);
   details.appendChild(fields);
 
   const actions = document.createElement("div");
@@ -268,6 +279,7 @@ function jobAdminCardElement(job) {
           url: urlVal,
           company: company.input.value.trim() || null,
           company_url: companyUrl.input.value.trim() || null,
+          owner_id: ownerSelect.value ? Number(ownerSelect.value) : null,
           applied: appliedInput.checked,
         }),
       });
@@ -310,24 +322,121 @@ const TIER_RANK = { Strong: 0, Good: 1, Possible: 2, Weak: 3 };
 const DEFAULT_HIDDEN_TIERS = ["Possible", "Weak", "Unscored", "Unclear"];
 
 let allJobs = [];
+let allPeople = [];
+
+function personById(id) {
+  return allPeople.find((p) => p.id === id) || null;
+}
+
+function populatePersonSelect(select, blankLabel) {
+  const previousValue = select.value;
+  select.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = blankLabel;
+  select.appendChild(blank);
+  for (const person of allPeople) {
+    const option = document.createElement("option");
+    option.value = String(person.id);
+    option.textContent = person.name;
+    select.appendChild(option);
+  }
+  if ([...select.options].some((o) => o.value === previousValue)) {
+    select.value = previousValue;
+  }
+}
+
+async function loadPeople() {
+  allPeople = await fetchJSON("/api/people");
+  populatePersonSelect(document.getElementById("new-job-owner"), "No owner");
+
+  const importSelect = document.getElementById("import-owner-select");
+  populatePersonSelect(importSelect, "No owner");
+  const savedOwner = localStorage.getItem("jobImportOwnerId");
+  if (savedOwner && [...importSelect.options].some((o) => o.value === savedOwner)) {
+    importSelect.value = savedOwner;
+  }
+
+  renderOwnerFilterButtons();
+}
+
+// Unlike tiers, owners are a dynamic, user-managed list (see admin.html) -
+// the filter buttons for them can't be static HTML, they're built here once
+// people are loaded. "Unassigned" stands in for jobs with no owner_id, same
+// idea as tiers' "Unscored".
+const UNASSIGNED_OWNER_KEY = "unassigned";
+
+function jobOwnerKey(job) {
+  return job.owner_id != null ? String(job.owner_id) : UNASSIGNED_OWNER_KEY;
+}
+
+function renderOwnerFilterButtons() {
+  const container = document.getElementById("job-owner-filters");
+  container.innerHTML = "";
+  if (allPeople.length === 0) return; // nobody configured yet - nothing to filter by
+
+  const entries = [...allPeople.map((p) => ({ key: String(p.id), label: p.name, color: p.color }))];
+  entries.push({ key: UNASSIGNED_OWNER_KEY, label: "Unassigned", color: null });
+
+  for (const entry of entries) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "owner-filter-btn";
+    btn.dataset.owner = entry.key;
+    if (entry.color) {
+      const dot = document.createElement("span");
+      dot.className = "owner-filter-dot";
+      dot.style.background = entry.color;
+      btn.appendChild(dot);
+    }
+    btn.appendChild(document.createTextNode(entry.label));
+    btn.classList.toggle("inactive", jobFilterState.hiddenOwners.has(entry.key));
+    btn.addEventListener("click", () => {
+      if (jobFilterState.hiddenOwners.has(entry.key)) {
+        jobFilterState.hiddenOwners.delete(entry.key);
+      } else {
+        jobFilterState.hiddenOwners.add(entry.key);
+      }
+      btn.classList.toggle("inactive", jobFilterState.hiddenOwners.has(entry.key));
+      saveJobFilterState();
+      renderJobList();
+    });
+    container.appendChild(btn);
+  }
+}
+
+function ownerTag(job) {
+  const person = job.owner_id != null ? personById(job.owner_id) : null;
+  if (!person) return null;
+  const tag = document.createElement("span");
+  tag.className = "owner-tag";
+  const dot = document.createElement("span");
+  dot.className = "owner-filter-dot";
+  dot.style.background = person.color;
+  tag.append(dot, document.createTextNode(person.name));
+  return tag;
+}
 
 function loadJobFilterState() {
   let hiddenTiers = DEFAULT_HIDDEN_TIERS;
+  let hiddenOwners = [];
   let sort = "tier";
   try {
-    const stored = localStorage.getItem("jobFilterHiddenTiers");
-    hiddenTiers = stored === null ? DEFAULT_HIDDEN_TIERS : JSON.parse(stored);
+    const storedTiers = localStorage.getItem("jobFilterHiddenTiers");
+    hiddenTiers = storedTiers === null ? DEFAULT_HIDDEN_TIERS : JSON.parse(storedTiers);
+    hiddenOwners = JSON.parse(localStorage.getItem("jobFilterHiddenOwners") || "[]");
     sort = localStorage.getItem("jobFilterSort") || "tier";
   } catch (e) {
     // ignore malformed/unavailable localStorage, fall back to defaults
   }
-  return { hiddenTiers: new Set(hiddenTiers), sort };
+  return { hiddenTiers: new Set(hiddenTiers), hiddenOwners: new Set(hiddenOwners), sort };
 }
 
 const jobFilterState = loadJobFilterState();
 
 function saveJobFilterState() {
   localStorage.setItem("jobFilterHiddenTiers", JSON.stringify(Array.from(jobFilterState.hiddenTiers)));
+  localStorage.setItem("jobFilterHiddenOwners", JSON.stringify(Array.from(jobFilterState.hiddenOwners)));
   localStorage.setItem("jobFilterSort", jobFilterState.sort);
 }
 
@@ -336,7 +445,9 @@ function jobTierKey(job) {
 }
 
 function visibleSortedJobs() {
-  const visible = allJobs.filter((j) => !jobFilterState.hiddenTiers.has(jobTierKey(j)));
+  const visible = allJobs.filter(
+    (j) => !jobFilterState.hiddenTiers.has(jobTierKey(j)) && !jobFilterState.hiddenOwners.has(jobOwnerKey(j))
+  );
   if (jobFilterState.sort === "tier") {
     // Best fit first, then newest first within each tier - explicit on the
     // created_at tie-break rather than leaning on server order, so this
@@ -436,12 +547,19 @@ function initAddJobForm() {
     const url = document.getElementById("new-job-url").value.trim();
     const company = document.getElementById("new-job-company").value.trim();
     const companyUrl = document.getElementById("new-job-company-url").value.trim();
+    const ownerId = document.getElementById("new-job-owner").value;
     if (!name || !url) return;
     try {
       await fetchJSON("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, url, company: company || null, company_url: companyUrl || null }),
+        body: JSON.stringify({
+          name,
+          url,
+          company: company || null,
+          company_url: companyUrl || null,
+          owner_id: ownerId ? Number(ownerId) : null,
+        }),
       });
       form.reset();
       form.classList.add("hidden");
@@ -458,8 +576,11 @@ function initImportJobs() {
   document.getElementById("import-jobs-file").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const ownerId = document.getElementById("import-owner-select").value;
+    localStorage.setItem("jobImportOwnerId", ownerId);
     const formData = new FormData();
     formData.append("file", file);
+    if (ownerId) formData.append("owner_id", ownerId);
     try {
       // No Content-Type header here on purpose - the browser sets the
       // multipart boundary itself from the FormData body; setting it
@@ -582,4 +703,5 @@ initAddJobForm();
 initImportJobs();
 initJobFilters();
 initBulkResumeGeneration();
+loadPeople();
 loadJobs();

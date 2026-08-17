@@ -3,10 +3,10 @@ import io
 import re
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import yaml
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -29,7 +29,11 @@ def list_jobs(db: Session = Depends(get_db)):
 
 
 @router.post("/import", response_model=schemas.JobImportResult)
-async def import_jobs(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def import_jobs(
+    file: UploadFile = File(...),
+    owner_id: Optional[int] = Form(None),
+    db: Session = Depends(get_db),
+):
     raw = await file.read()
     try:
         text = raw.decode("utf-8-sig")  # -sig strips a BOM if Excel/Sheets added one
@@ -38,7 +42,7 @@ async def import_jobs(file: UploadFile = File(...), db: Session = Depends(get_db
     reader = csv.DictReader(io.StringIO(text))
     if reader.fieldnames is None or "url" not in reader.fieldnames:
         raise HTTPException(status_code=400, detail="CSV is missing a 'url' column")
-    return crud.import_jobs_from_csv(db, list(reader))
+    return crud.import_jobs_from_csv(db, list(reader), owner_id=owner_id)
 
 
 @router.post("", response_model=schemas.Job)

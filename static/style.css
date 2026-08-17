@@ -824,6 +824,19 @@ button.app-nav-link {
   border-top: 1px solid var(--border);
 }
 
+.admin-section-heading {
+  font-size: 14px;
+  margin: 28px 0 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.admin-section-heading:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
 /* Jobs admin page - mobile-first: single column, full-width tap targets by
    default; only widens into a denser desktop layout above 640px. */
 
@@ -845,6 +858,35 @@ button.app-nav-link {
   background: #fff;
   color: var(--text);
   border: 1px solid var(--border);
+}
+
+#import-jobs-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+#import-jobs-row .add-job-toggle.secondary {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+#import-owner-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#import-owner-select {
+  width: auto;
+  margin-top: 0;
+  padding: 4px 8px;
+  font-size: 13px;
 }
 
 .tier-badge {
@@ -921,6 +963,57 @@ button.app-nav-link {
 .tier-filter-btn.tier-weak {
   color: #374151;
   background: #d7dce2;
+}
+
+/* Owner filter pills + the matching tag on job cards. People have
+   arbitrary user-picked colors (see admin.html), so unlike tiers these
+   don't fill the whole pill with color (no contrast guarantee against
+   arbitrary text) - just a small color dot next to a neutral pill,
+   matching how category colors are used as an accent elsewhere in the
+   app rather than a full background fill. */
+#job-owner-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.owner-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 10px;
+  padding: 3px 10px 3px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 0.1s ease;
+}
+
+.owner-filter-btn.inactive {
+  opacity: 0.35;
+}
+
+.owner-filter-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.owner-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
 }
 
 #job-sort-label {

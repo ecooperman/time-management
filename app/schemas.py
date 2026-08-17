@@ -26,11 +26,32 @@ class Category(CategoryBase):
     id: int
 
 
+class PersonBase(BaseModel):
+    name: str
+    color: str
+
+
+class PersonCreate(PersonBase):
+    pass
+
+
+class PersonUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+
+
+class Person(PersonBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+
+
 class JobBase(BaseModel):
     name: str
     url: str
     company: Optional[str] = None
     company_url: Optional[str] = None
+    owner_id: Optional[int] = None
 
 
 class JobCreate(JobBase):
@@ -42,6 +63,7 @@ class JobUpdate(BaseModel):
     url: Optional[str] = None
     company: Optional[str] = None
     company_url: Optional[str] = None
+    owner_id: Optional[int] = None
     applied: Optional[bool] = None
     salary: Optional[str] = None
     tier: Optional[str] = None
