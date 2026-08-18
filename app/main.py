@@ -51,7 +51,7 @@ def get_version():
 # before the StaticFiles mount below so these take priority over it.
 def _render(name: str):
     def handler(request: Request):
-        return templates.TemplateResponse(name, {"request": request, "shared_assets_base": SHARED_ASSETS_BASE})
+        return templates.TemplateResponse(request, name, {"shared_assets_base": SHARED_ASSETS_BASE})
 
     return handler
 
