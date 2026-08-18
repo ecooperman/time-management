@@ -2,8 +2,11 @@ import subprocess
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
+from .config import SHARED_ASSETS_BASE
 from .database import SessionLocal
 from .routers import categories, jobs, people, tasks
 from .seed import seed_categories
@@ -35,11 +38,27 @@ def _get_git_sha() -> str:
 GIT_SHA = _get_git_sha()
 
 app = FastAPI(title="Time Management")
+templates = Jinja2Templates(directory="templates")
 
 
 @app.get("/api/version")
 def get_version():
     return {"version": GIT_SHA}
+
+
+# shared_assets_base baked in server-side (no client-side fetch, no flash
+# of unstyled content) - see config.py's SHARED_ASSETS_BASE. Registered
+# before the StaticFiles mount below so these take priority over it.
+def _render(name: str):
+    def handler(request: Request):
+        return templates.TemplateResponse(name, {"request": request, "shared_assets_base": SHARED_ASSETS_BASE})
+
+    return handler
+
+
+app.get("/", response_class=HTMLResponse)(_render("index.html"))
+app.get("/jobs.html", response_class=HTMLResponse)(_render("jobs.html"))
+app.get("/admin.html", response_class=HTMLResponse)(_render("admin.html"))
 
 
 @app.middleware("http")

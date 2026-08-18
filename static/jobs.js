@@ -1,20 +1,3 @@
-async function fetchJSON(url, options) {
-  const res = await fetch(url, options);
-  if (!res.ok) {
-    let detail = `${url} -> ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body.detail) detail = body.detail;
-    } catch (e) {
-      // ignore, use default detail
-    }
-    const err = new Error(detail);
-    err.status = res.status;
-    throw err;
-  }
-  if (res.status === 204) return null;
-  return res.json();
-}
 
 function labeledInput(labelText, type, value) {
   const label = document.createElement("label");
@@ -110,11 +93,11 @@ function resumeActionsBlock(job) {
     generateBtn.disabled = true;
     generateBtn.textContent = "Generating... (about a minute)";
     try {
-      await fetchJSON(`/api/jobs/${job.id}/generate-resume`, { method: "POST" });
-      Theme.showMessage(`Generated a resume for "${job.name}".`, "success");
+      await Global.fetchJSON(`/api/jobs/${job.id}/generate-resume`, { method: "POST" });
+      Global.showMessage(`Generated a resume for "${job.name}".`, "success");
       loadJobs();
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
       generateBtn.disabled = false;
       generateBtn.textContent = idleLabel;
     }
@@ -211,7 +194,7 @@ function jobAdminCardElement(job) {
   const details = document.createElement("div");
   details.className = "item-details job-admin-details hidden";
 
-  Theme.wireAccordionToggle(card, summary, details);
+  Global.wireAccordionToggle(card, summary, details);
 
   card.append(summary, details);
 
@@ -256,11 +239,11 @@ function jobAdminCardElement(job) {
     const nameVal = name.input.value.trim();
     const urlVal = url.input.value.trim();
     if (!nameVal || !urlVal) {
-      Theme.showMessage("Name and URL are required.", "error");
+      Global.showMessage("Name and URL are required.", "error");
       return;
     }
     try {
-      await fetchJSON(`/api/jobs/${job.id}`, {
+      await Global.fetchJSON(`/api/jobs/${job.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -272,10 +255,10 @@ function jobAdminCardElement(job) {
           applied: appliedInput.checked,
         }),
       });
-      Theme.showMessage(`Saved "${nameVal}".`, "success");
+      Global.showMessage(`Saved "${nameVal}".`, "success");
       loadJobs();
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
     }
   });
   actions.appendChild(saveBtn);
@@ -287,11 +270,11 @@ function jobAdminCardElement(job) {
   deleteBtn.addEventListener("click", async () => {
     if (!confirm(`Delete "${job.name}"?`)) return;
     try {
-      await fetchJSON(`/api/jobs/${job.id}`, { method: "DELETE" });
-      Theme.showMessage(`Deleted "${job.name}".`, "success");
+      await Global.fetchJSON(`/api/jobs/${job.id}`, { method: "DELETE" });
+      Global.showMessage(`Deleted "${job.name}".`, "success");
       loadJobs();
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
     }
   });
   actions.appendChild(deleteBtn);
@@ -336,7 +319,7 @@ function populatePersonSelect(select, blankLabel) {
 }
 
 async function loadPeople() {
-  allPeople = await fetchJSON("/api/people");
+  allPeople = await Global.fetchJSON("/api/people");
   populatePersonSelect(document.getElementById("new-job-owner"), "No owner");
 
   const importSelect = document.getElementById("import-owner-select");
@@ -484,7 +467,7 @@ function renderJobList() {
 }
 
 async function loadJobs() {
-  allJobs = await fetchJSON("/api/jobs");
+  allJobs = await Global.fetchJSON("/api/jobs");
   renderJobList();
 }
 
@@ -539,7 +522,7 @@ function initAddJobForm() {
     const ownerId = document.getElementById("new-job-owner").value;
     if (!name || !url) return;
     try {
-      await fetchJSON("/api/jobs", {
+      await Global.fetchJSON("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -553,10 +536,10 @@ function initAddJobForm() {
       form.reset();
       form.classList.add("hidden");
       showBtn.classList.remove("hidden");
-      Theme.showMessage("Job added.", "success");
+      Global.showMessage("Job added.", "success");
       loadJobs();
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
     }
   });
 }
@@ -574,13 +557,13 @@ function initImportJobs() {
       // No Content-Type header here on purpose - the browser sets the
       // multipart boundary itself from the FormData body; setting it
       // manually would break the upload.
-      const result = await fetchJSON("/api/jobs/import", { method: "POST", body: formData });
+      const result = await Global.fetchJSON("/api/jobs/import", { method: "POST", body: formData });
       const parts = [`${result.created} new`, `${result.updated} updated`];
       if (result.skipped) parts.push(`${result.skipped} skipped`);
-      Theme.showMessage(`Import complete: ${parts.join(", ")}.`, "success");
+      Global.showMessage(`Import complete: ${parts.join(", ")}.`, "success");
       loadJobs();
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
     } finally {
       e.target.value = "";
     }
@@ -618,7 +601,7 @@ function initBulkResumeGeneration() {
   openBtn.addEventListener("click", () => {
     const visible = visibleSortedJobs();
     if (visible.length === 0) {
-      Theme.showMessage("No jobs match the current filter - nothing to generate.", "error");
+      Global.showMessage("No jobs match the current filter - nothing to generate.", "error");
       return;
     }
     resetModal();
@@ -641,9 +624,9 @@ function initBulkResumeGeneration() {
   async function pollBulkStatus(batchId) {
     let status;
     try {
-      status = await fetchJSON(`/api/jobs/generate-resumes-bulk/${batchId}`);
+      status = await Global.fetchJSON(`/api/jobs/generate-resumes-bulk/${batchId}`);
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
       return;
     }
 
@@ -674,7 +657,7 @@ function initBulkResumeGeneration() {
     confirmBtn.textContent = "Starting...";
     cancelBtn.classList.add("hidden");
     try {
-      const { batch_id } = await fetchJSON("/api/jobs/generate-resumes-bulk", {
+      const { batch_id } = await Global.fetchJSON("/api/jobs/generate-resumes-bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ job_ids: jobIds }),
@@ -682,7 +665,7 @@ function initBulkResumeGeneration() {
       progressEl.classList.remove("hidden");
       pollBulkStatus(batch_id);
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
       closeModal();
     }
   });

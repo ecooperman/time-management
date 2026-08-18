@@ -533,38 +533,15 @@ main {
   }
 }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-
-.modal-overlay.hidden {
-  display: none;
-}
-
-.modal {
-  background: #fff;
-  border-radius: 10px;
-  padding: 20px;
-  width: 360px;
-  max-width: 90vw;
-  position: relative;
-}
-
-.modal-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  border: none;
-  background: none;
-  font-size: 18px;
-  padding: 0 6px;
-}
+/* .modal-overlay/.modal/.modal-close/.modal-actions moved to
+   https://static.evancooperman.com/theme.css - promoted from here (the
+   only app that had modals) as a reusable component. Escape-key and
+   backdrop-click dismiss now come free from theme.js's global listeners;
+   the open*/close* functions in app.js/jobs.js already just do
+   classList.remove/add("hidden") so nothing there needed to change. Only
+   .status-row (below) and the .modal .row/.modal .row > label layout
+   tweaks stayed local since they're specific to this app's task-modal
+   layout, not part of the generic component. */
 
 .modal .row {
   display: flex;
@@ -578,17 +555,6 @@ main {
 .status-row {
   font-size: 13px;
   margin-bottom: 12px;
-}
-
-.modal-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.modal-actions button.danger {
-  color: #b3261e;
-  border-color: #b3261e;
 }
 
 .linked-job {

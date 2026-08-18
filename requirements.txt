@@ -1,5 +1,6 @@
 fastapi
 uvicorn[standard]
+jinja2
 sqlalchemy
 alembic==1.16.5
 python-multipart

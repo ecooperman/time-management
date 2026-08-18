@@ -14,22 +14,6 @@ let currentView = mobileMediaQuery.matches ? "day" : "workWeek"; // 'day' | 'wor
 let anchorDate = new Date();
 anchorDate.setHours(0, 0, 0, 0);
 
-async function fetchJSON(url, options) {
-  const res = await fetch(url, options);
-  if (!res.ok) {
-    let detail = `${url} -> ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body.detail) detail = body.detail;
-    } catch (e) {
-      // ignore, use default detail
-    }
-    throw new Error(detail);
-  }
-  if (res.status === 204) return null;
-  return res.json();
-}
-
 function minutesLabel(mins) {
   if (mins === null || mins === undefined) return null;
   const h = Math.floor(mins / 60);
@@ -138,7 +122,7 @@ function populateCategorySelects() {
 }
 
 async function loadCategories() {
-  categories = await fetchJSON("/api/categories");
+  categories = await Global.fetchJSON("/api/categories");
   categoriesById = Object.fromEntries(categories.map((c) => [c.id, c]));
   populateCategorySelects();
 }
@@ -234,7 +218,7 @@ async function handleJobDroppedOnTaskList(evt) {
   if (!job) return;
 
   const date = evt.to.dataset.date || null;
-  const task = await fetchJSON("/api/tasks", {
+  const task = await Global.fetchJSON("/api/tasks", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -244,7 +228,7 @@ async function handleJobDroppedOnTaskList(evt) {
     }),
   });
   if (date) {
-    await fetchJSON(`/api/tasks/${task.id}`, {
+    await Global.fetchJSON(`/api/tasks/${task.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scheduled_date: `${date}T00:00:00`, due_date: `${date}T00:00:00` }),
@@ -282,7 +266,7 @@ async function handleSortEnd(evt) {
   collect(toEl);
   if (fromEl !== toEl) collect(fromEl);
 
-  await fetchJSON("/api/tasks/reorder", {
+  await Global.fetchJSON("/api/tasks/reorder", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ updates }),
@@ -340,7 +324,7 @@ async function loadAndRenderCalendar() {
   const days = getVisibleDays(currentView, anchorDate);
   const start = isoDateTime(days[0]);
   const end = isoDateTime(addDays(days[days.length - 1], 1));
-  const tasks = await fetchJSON(`/api/tasks?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+  const tasks = await Global.fetchJSON(`/api/tasks?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
   renderGrid(days, bucketTasksByDate(tasks));
   updateNavTitle(days);
 }
@@ -360,7 +344,7 @@ function renderBacklog(tasks) {
 }
 
 async function refreshBacklog() {
-  const tasks = await fetchJSON("/api/tasks/backlog");
+  const tasks = await Global.fetchJSON("/api/tasks/backlog");
   renderBacklog(tasks);
 }
 
@@ -386,7 +370,7 @@ function scheduleButton(dateKey, dayLabel, onClick) {
 }
 
 async function scheduleTaskToDay(taskId, dateKey) {
-  await fetchJSON(`/api/tasks/${taskId}`, {
+  await Global.fetchJSON(`/api/tasks/${taskId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ scheduled_date: `${dateKey}T00:00:00`, due_date: `${dateKey}T00:00:00` }),
@@ -397,7 +381,7 @@ async function scheduleTaskToDay(taskId, dateKey) {
 async function createJobTaskOnDay(jobId, dateKey) {
   const job = jobsById[jobId];
   if (!job) return;
-  const task = await fetchJSON("/api/tasks", {
+  const task = await Global.fetchJSON("/api/tasks", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -476,7 +460,7 @@ function renderJobs(jobsData) {
 }
 
 async function refreshJobs() {
-  const jobsData = await fetchJSON("/api/jobs");
+  const jobsData = await Global.fetchJSON("/api/jobs");
   renderJobs(jobsData);
 }
 
@@ -509,7 +493,7 @@ function initJobModal() {
     const companyUrl = document.getElementById("job-modal-company-url").value.trim();
     if (!name || !url) return;
     try {
-      await fetchJSON(`/api/jobs/${activeJobId}`, {
+      await Global.fetchJSON(`/api/jobs/${activeJobId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -529,7 +513,7 @@ function initJobModal() {
 
   document.getElementById("job-modal-delete").addEventListener("click", async () => {
     try {
-      await fetchJSON(`/api/jobs/${activeJobId}`, { method: "DELETE" });
+      await Global.fetchJSON(`/api/jobs/${activeJobId}`, { method: "DELETE" });
       closeJobModal();
       refreshJobs();
     } catch (err) {
@@ -705,7 +689,7 @@ function initModal() {
 
   document.getElementById("modal-save").addEventListener("click", async () => {
     const repeatUntil = document.getElementById("modal-task-repeat-until").value;
-    await fetchJSON(`/api/tasks/${activeTaskId}`, {
+    await Global.fetchJSON(`/api/tasks/${activeTaskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -728,7 +712,7 @@ function initModal() {
   });
 
   document.getElementById("modal-mark-done").addEventListener("click", async () => {
-    await fetchJSON(`/api/tasks/${activeTaskId}`, {
+    await Global.fetchJSON(`/api/tasks/${activeTaskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "done" }),
@@ -738,7 +722,7 @@ function initModal() {
   });
 
   document.getElementById("modal-reopen").addEventListener("click", async () => {
-    await fetchJSON(`/api/tasks/${activeTaskId}`, {
+    await Global.fetchJSON(`/api/tasks/${activeTaskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "open" }),
@@ -748,7 +732,7 @@ function initModal() {
   });
 
   document.getElementById("modal-toggle-hold").addEventListener("click", async () => {
-    await fetchJSON(`/api/tasks/${activeTaskId}`, {
+    await Global.fetchJSON(`/api/tasks/${activeTaskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "on_hold" }),
@@ -758,7 +742,7 @@ function initModal() {
   });
 
   document.getElementById("modal-to-backlog").addEventListener("click", async () => {
-    await fetchJSON(`/api/tasks/${activeTaskId}`, {
+    await Global.fetchJSON(`/api/tasks/${activeTaskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "open", scheduled_date: null }),
@@ -768,7 +752,7 @@ function initModal() {
   });
 
   document.getElementById("modal-delete").addEventListener("click", async () => {
-    await fetchJSON(`/api/tasks/${activeTaskId}`, { method: "DELETE" });
+    await Global.fetchJSON(`/api/tasks/${activeTaskId}`, { method: "DELETE" });
     closeModal();
     refreshAll();
   });
@@ -779,7 +763,7 @@ function initAddTaskForm() {
     e.preventDefault();
     const title = document.getElementById("task-title").value.trim();
     if (!title) return;
-    await fetchJSON("/api/tasks", {
+    await Global.fetchJSON("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -1,20 +1,3 @@
-async function fetchJSON(url, options) {
-  const res = await fetch(url, options);
-  if (!res.ok) {
-    let detail = `${url} -> ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body.detail) detail = body.detail;
-    } catch (e) {
-      // ignore, use default detail
-    }
-    const err = new Error(detail);
-    err.status = res.status;
-    throw err;
-  }
-  if (res.status === 204) return null;
-  return res.json();
-}
 
 function categoryRowElement(category) {
   const row = document.createElement("div");
@@ -34,15 +17,15 @@ function categoryRowElement(category) {
   saveBtn.textContent = "Save";
   saveBtn.addEventListener("click", async () => {
     try {
-      await fetchJSON(`/api/categories/${category.id}`, {
+      await Global.fetchJSON(`/api/categories/${category.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: nameInput.value, color: colorInput.value }),
       });
-      Theme.showMessage(`Saved "${nameInput.value}".`, "success");
+      Global.showMessage(`Saved "${nameInput.value}".`, "success");
       loadCategories();
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
     }
   });
 
@@ -53,11 +36,11 @@ function categoryRowElement(category) {
   deleteBtn.addEventListener("click", async () => {
     if (!confirm(`Delete category "${category.name}"?`)) return;
     try {
-      await fetchJSON(`/api/categories/${category.id}`, { method: "DELETE" });
-      Theme.showMessage(`Deleted "${category.name}".`, "success");
+      await Global.fetchJSON(`/api/categories/${category.id}`, { method: "DELETE" });
+      Global.showMessage(`Deleted "${category.name}".`, "success");
       loadCategories();
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
     }
   });
 
@@ -69,7 +52,7 @@ function categoryRowElement(category) {
 }
 
 async function loadCategories() {
-  const categories = await fetchJSON("/api/categories");
+  const categories = await Global.fetchJSON("/api/categories");
   const container = document.getElementById("category-rows");
   container.innerHTML = "";
   for (const category of categories) {
@@ -83,16 +66,16 @@ function initAddForm() {
     const nameInput = document.getElementById("new-category-name");
     const colorInput = document.getElementById("new-category-color");
     try {
-      await fetchJSON("/api/categories", {
+      await Global.fetchJSON("/api/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: nameInput.value, color: colorInput.value }),
       });
       nameInput.value = "";
-      Theme.showMessage("Category added.", "success");
+      Global.showMessage("Category added.", "success");
       loadCategories();
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
     }
   });
 }
@@ -115,15 +98,15 @@ function personRowElement(person) {
   saveBtn.textContent = "Save";
   saveBtn.addEventListener("click", async () => {
     try {
-      await fetchJSON(`/api/people/${person.id}`, {
+      await Global.fetchJSON(`/api/people/${person.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: nameInput.value, color: colorInput.value }),
       });
-      Theme.showMessage(`Saved "${nameInput.value}".`, "success");
+      Global.showMessage(`Saved "${nameInput.value}".`, "success");
       loadPeople();
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
     }
   });
 
@@ -134,11 +117,11 @@ function personRowElement(person) {
   deleteBtn.addEventListener("click", async () => {
     if (!confirm(`Delete "${person.name}"?`)) return;
     try {
-      await fetchJSON(`/api/people/${person.id}`, { method: "DELETE" });
-      Theme.showMessage(`Deleted "${person.name}".`, "success");
+      await Global.fetchJSON(`/api/people/${person.id}`, { method: "DELETE" });
+      Global.showMessage(`Deleted "${person.name}".`, "success");
       loadPeople();
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
     }
   });
 
@@ -150,7 +133,7 @@ function personRowElement(person) {
 }
 
 async function loadPeople() {
-  const people = await fetchJSON("/api/people");
+  const people = await Global.fetchJSON("/api/people");
   const container = document.getElementById("person-rows");
   container.innerHTML = "";
   for (const person of people) {
@@ -164,16 +147,16 @@ function initAddPersonForm() {
     const nameInput = document.getElementById("new-person-name");
     const colorInput = document.getElementById("new-person-color");
     try {
-      await fetchJSON("/api/people", {
+      await Global.fetchJSON("/api/people", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: nameInput.value, color: colorInput.value }),
       });
       nameInput.value = "";
-      Theme.showMessage("Person added.", "success");
+      Global.showMessage("Person added.", "success");
       loadPeople();
     } catch (err) {
-      Theme.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error");
     }
   });
 }
