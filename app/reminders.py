@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from . import models, push
 from .database import SessionLocal
 
-CHECK_INTERVAL_SECONDS = 60
+CHECK_INTERVAL_SECONDS = 15
 
 
 def _is_due(task: models.Task, now: datetime) -> bool:
