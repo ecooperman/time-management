@@ -294,6 +294,16 @@ async function handleSortEnd(evt) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ updates }),
   });
+
+  // Sortable.js already moved the dragged card's DOM node on its own, but
+  // every card's click handler closes over the task object from the last
+  // render pass - without a refresh here, opening a just-dragged task's
+  // modal right away still sees its old scheduled_date (e.g. still null
+  // right after a backlog->calendar drag), which wrongly disables the
+  // repeat/remind fields until something else happens to trigger a
+  // refresh. Matches the same refreshAll() call handleJobDroppedOnTaskList
+  // already does above for the same reason.
+  refreshAll();
 }
 
 function bucketTasksByDate(tasks) {
