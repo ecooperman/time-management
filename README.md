@@ -202,7 +202,7 @@ upgrade head`, and restarts the service. Needs these repo secrets set once
   per browser/phone, so everyone who wants nagging needs to enable it on
   their own device. Editing the reminder time/snooze/max, or reopening a
   done task, restarts the count from zero. Backed by a small in-process
-  scheduler (checks every 5 minutes) and Web Push - see "Environment
+  scheduler (checks every minute) and Web Push - see "Environment
   variables" below for the VAPID keys this needs configured, and note
   iOS requires 16.4+ and the app added to the home screen (push
   permission can't be requested from a plain Safari tab).
