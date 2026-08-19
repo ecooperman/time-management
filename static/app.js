@@ -5,6 +5,28 @@ let jobsById = {};
 let activeTaskId = null;
 let activeTaskScheduledDateKey = null; // "YYYY-MM-DD" of the open task's scheduled_date, if any - needed at save time to combine with the reminder time input into a full remind_at datetime
 
+// remind_at is stored/compared on the backend as a naive UTC datetime (same
+// convention as created_at/completed_at, via datetime.utcnow()) - but the
+// "Remind me at" field is a plain local <input type="time">, which knows
+// nothing about timezones. These two helpers are the only place that
+// conversion happens, in both directions, using the browser's own Date
+// object so it picks up the real local offset (and DST) automatically
+// rather than hardcoding one.
+function localTimeToNaiveUTC(dateKey, timeStr) {
+  const local = new Date(`${dateKey}T${timeStr}:00`); // parsed as local time
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}` +
+    `T${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}:00`
+  );
+}
+
+function naiveUTCToLocalTimeInput(naiveUTCString) {
+  const utc = new Date(`${naiveUTCString}Z`); // "Z" tells Date this is UTC, not local
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(utc.getHours())}:${pad(utc.getMinutes())}`;
+}
+
 // Multi-column views don't fit a phone-width screen, and with the sidebar
 // and calendar stacked (not side-by-side) below the 640px breakpoint,
 // there's nowhere for a drag between them to land anyway - so mobile always
@@ -648,7 +670,7 @@ function openModal(task) {
   const remindFields = document.getElementById("modal-remind-fields");
   remindCheckbox.disabled = !isScheduled;
   remindCheckbox.checked = isScheduled && !!task.remind_at;
-  document.getElementById("modal-task-remind-time").value = task.remind_at ? task.remind_at.slice(11, 16) : "";
+  document.getElementById("modal-task-remind-time").value = task.remind_at ? naiveUTCToLocalTimeInput(task.remind_at) : "";
   document.getElementById("modal-task-remind-snooze").value = task.remind_snooze_minutes || "";
   document.getElementById("modal-task-remind-max").value = task.remind_max_count ?? "";
   remindFields.classList.toggle("hidden", !remindCheckbox.checked);
@@ -712,11 +734,15 @@ function initModal() {
     const remindSnooze = document.getElementById("modal-task-remind-snooze").value;
     const remindMax = document.getElementById("modal-task-remind-max").value;
     // remind_at needs a full datetime - combine the task's own scheduled
-    // day with the time picked here. If the checkbox is on but no time was
-    // actually chosen yet, treat it as not-set rather than guessing one.
+    // day with the time picked here, then convert from local wall-clock
+    // time to naive UTC (see localTimeToNaiveUTC above) - the backend
+    // compares this against datetime.utcnow(), so sending raw local digits
+    // here would silently misfire by the browser's UTC offset. If the
+    // checkbox is on but no time was actually chosen yet, treat it as
+    // not-set rather than guessing one.
     const remindAt =
       remindEnabled && remindTime && activeTaskScheduledDateKey
-        ? `${activeTaskScheduledDateKey}T${remindTime}:00`
+        ? localTimeToNaiveUTC(activeTaskScheduledDateKey, remindTime)
         : null;
 
     await Global.fetchJSON(`/api/tasks/${activeTaskId}`, {
