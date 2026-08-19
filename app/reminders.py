@@ -51,7 +51,12 @@ def check_due_reminders(db: Session) -> None:
             if task.remind_count_sent == 0
             else f"Still not done (reminder #{task.remind_count_sent + 1})."
         )
-        push.send_push_to_all(db, title=task.title, body=body, url="/", task_id=task.id)
+        # ?task= is picked up by app.js on load to jump straight into this
+        # task's modal - since iOS ignores the "Mark done" action button
+        # (see static/sw.js), a tap opening directly to the modal is the
+        # best iOS can actually do: one tap to notification, one to Mark
+        # done, instead of a plain tap landing on the unrelated day view.
+        push.send_push_to_all(db, title=task.title, body=body, url=f"/?task={task.id}", task_id=task.id)
         task.remind_count_sent += 1
         task.last_reminded_at = now
     db.commit()

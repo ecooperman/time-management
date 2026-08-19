@@ -871,6 +871,26 @@ function initSidebarToggle() {
   });
 }
 
+// A reminder push's "Open" tap links here as /?task=<id> (see
+// app/reminders.py) so it lands straight in that task's modal instead of
+// just the day view - the closest thing to one-tap "mark done" iOS allows,
+// since it ignores the notification's actual action button entirely (see
+// static/sw.js). Strips the query param afterward so a later manual
+// refresh of this same tab doesn't keep reopening it.
+async function openTaskFromQueryParam() {
+  const params = new URLSearchParams(location.search);
+  const taskId = params.get("task");
+  if (!taskId) return;
+  history.replaceState(null, "", location.pathname);
+  try {
+    const task = await Global.fetchJSON(`/api/tasks/${taskId}`);
+    openModal(task);
+  } catch (e) {
+    // Task was deleted, or some other fetch failure - nothing sensible to
+    // recover into, just land on the normal calendar view.
+  }
+}
+
 async function init() {
   await loadCategories();
   initViewToggle();
@@ -881,6 +901,7 @@ async function init() {
   initJumpModal();
   initSidebarToggle();
   await refreshAll();
+  await openTaskFromQueryParam();
 }
 
 init();

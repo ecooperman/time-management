@@ -29,6 +29,17 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
     return crud.create_task(db, task)
 
 
+@router.get("/{task_id}", response_model=schemas.Task)
+def get_task(task_id: int, db: Session = Depends(get_db)):
+    # Registered after the "/backlog" literal route above on purpose - a
+    # "/{task_id}" pattern registered first would shadow it (task_id=
+    # "backlog" fails int coercion before ever reaching list_backlog).
+    task = crud.get_task(db, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
 @router.post("/reorder", response_model=List[schemas.Task])
 def reorder_tasks(payload: schemas.ReorderRequest, db: Session = Depends(get_db)):
     return crud.reorder_tasks(db, payload.updates)
