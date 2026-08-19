@@ -202,10 +202,16 @@ upgrade head`, and restarts the service. Needs these repo secrets set once
   per browser/phone, so everyone who wants nagging needs to enable it on
   their own device. Editing the reminder time/snooze/max, or reopening a
   done task, restarts the count from zero. Backed by a small in-process
-  scheduler (checks every minute) and Web Push - see "Environment
+  scheduler (checks every 15 seconds) and Web Push - see "Environment
   variables" below for the VAPID keys this needs configured, and note
   iOS requires 16.4+ and the app added to the home screen (push
-  permission can't be requested from a plain Safari tab).
+  permission can't be requested from a plain Safari tab). The notification
+  itself has a "Mark done" action (long-press/pull-down to reveal it, same
+  as any native notification) that PATCHes the task straight from the
+  service worker with no app UI involved - if that fails for any reason
+  (most likely a lapsed Cloudflare Access session, which needs a real
+  browser to re-authenticate), it falls back to opening the app instead of
+  silently doing nothing.
 - The backend (`app/`) is a plain JSON REST API; the frontend
   (`static/app.js`) is a thin vanilla-JS client (drag-and-drop via SortableJS)
   with no build step. That split is intentional so the frontend can later be

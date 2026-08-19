@@ -52,17 +52,21 @@ def _vapid_private_key() -> Vapid02:
     return Vapid02.from_raw(config.VAPID_PRIVATE_KEY.encode())
 
 
-def send_push_to_all(db: Session, title: str, body: str, url: str = "/") -> None:
+def send_push_to_all(db: Session, title: str, body: str, url: str = "/", task_id: int = None) -> None:
     """Sends one push message to every subscribed device. A subscription
     that comes back 404/410 (Gone) means the browser dropped it - the
     user uninstalled the PWA, cleared data, or revoked permission - so we
-    delete it rather than let it fail forever on every future send."""
+    delete it rather than let it fail forever on every future send.
+
+    task_id, when given, is what lets sw.js show a "Mark done" action
+    button and PATCH that task directly from the notification - see
+    static/sw.js's push/notificationclick handlers."""
     subscriptions = crud.get_push_subscriptions(db)
     if not subscriptions:
         return
 
     vapid_private_key = _vapid_private_key()
-    payload = {"title": title, "body": body, "url": url}
+    payload = {"title": title, "body": body, "url": url, "taskId": task_id}
 
     for sub in subscriptions:
         subscription_info = {

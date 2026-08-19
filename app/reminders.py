@@ -51,7 +51,7 @@ def check_due_reminders(db: Session) -> None:
             if task.remind_count_sent == 0
             else f"Still not done (reminder #{task.remind_count_sent + 1})."
         )
-        push.send_push_to_all(db, title=task.title, body=body, url="/")
+        push.send_push_to_all(db, title=task.title, body=body, url="/", task_id=task.id)
         task.remind_count_sent += 1
         task.last_reminded_at = now
     db.commit()
