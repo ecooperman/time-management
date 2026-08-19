@@ -17,3 +17,13 @@ Global.buildNav([
   { href: "/admin.html", icon: "tag", label: "Settings", active: active === "settings" },
   { icon: "refresh", label: "Refresh", onclick: () => location.reload() },
 ]);
+
+// Registered here (not per-page) so it's active no matter which page the
+// PWA happens to be opened to - see static/sw.js. Push notifications only
+// work once this registration exists; the actual subscribe flow ("Enable
+// reminders" on Settings) is separate and only needed once per device.
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch((err) => {
+    console.error("Service worker registration failed:", err);
+  });
+}

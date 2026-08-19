@@ -22,3 +22,15 @@ SHARED_ASSETS_BASE = "https://static.evancooperman.com" if ENV == "production" e
 RESUME_ADMIN_URL = os.environ.get("RESUME_ADMIN_URL", "http://127.0.0.1:8041")
 INTERNAL_API_TOKEN = os.environ.get("INTERNAL_API_TOKEN")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+
+# Task reminder push notifications (see app/push.py, app/reminders.py).
+# The VAPID keypair is this app's own Web Push identity - not a secret
+# issued by/shared with anyone else, so unlike the two above there's no
+# external account it has to match. Generate once with
+# `python -m app.push generate-vapid-keys`, then set these the same way as
+# the rest (systemd env on the droplet, exported in your shell locally).
+# VAPID_SUBJECT is a mailto: URI the push services use to contact you if
+# your usage looks like a problem - required by the Web Push spec.
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:evanjcooperman@gmail.com")

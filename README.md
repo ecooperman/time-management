@@ -38,6 +38,31 @@ set them directly in `/etc/systemd/system/time-management.service` (never
 commit real values - see `deploy/time-management.service` for the
 placeholder lines and `DEPLOYMENT.md`).
 
+### Environment variables (task reminder push notifications)
+
+The "Remind me" fields on a task (see Notes below) need a VAPID keypair -
+this app's own Web Push identity, not a secret shared with anyone else.
+Generate one once:
+
+```bash
+source venv/bin/activate
+python -m app.push generate-vapid-keys
+```
+
+which prints both values below - both are plain base64url text (only
+`A-Z`/`a-z`/`0-9`/`-`/`_`), so they're safe to drop straight into a
+`systemd` `Environment=` line with no quoting surprises.
+
+| Variable | Required for | Notes |
+|---|---|---|
+| `VAPID_PUBLIC_KEY` | The browser's push subscription call, and the frontend | Same string the frontend uses as `applicationServerKey` |
+| `VAPID_PRIVATE_KEY` | Actually signing/sending each push | Keep this one secret - it's what proves pushes came from this app |
+| `VAPID_SUBJECT` | Required by the Web Push spec | Optional - defaults to a `mailto:` for Evan; a push service can contact this if your usage looks like a problem |
+
+Without these set, generating/editing a reminder still works fine - the
+scheduler just logs a failure each check cycle instead of sending anything,
+rather than crashing the app.
+
 ## Schema changes (Alembic)
 
 Schema is owned by migrations under `migrations/versions/`, not by wiping
@@ -166,6 +191,21 @@ upgrade head`, and restarts the service. Needs these repo secrets set once
   Unchecking "repeat daily" (or pulling the end date in, or deleting the
   origin task) deletes not-yet-passed future occurrences of that series -
   past occurrences are left alone as history.
+- A scheduled task can be set to send a push notification if it's still
+  open at a chosen time ("Remind me if not done" in its edit modal - only
+  available once the task is scheduled on a day, since a reminder needs a
+  concrete date+time). Optionally repeat the nag every 15/30/60/120
+  minutes as long as the task is still open, up to a chosen max count (or
+  unlimited). Notifications go to every device that's enabled reminders,
+  not just one - there's no per-person routing. Enable this per-device
+  from Settings ("Enable reminders on this device"); it's independent
+  per browser/phone, so everyone who wants nagging needs to enable it on
+  their own device. Editing the reminder time/snooze/max, or reopening a
+  done task, restarts the count from zero. Backed by a small in-process
+  scheduler (checks every 5 minutes) and Web Push - see "Environment
+  variables" below for the VAPID keys this needs configured, and note
+  iOS requires 16.4+ and the app added to the home screen (push
+  permission can't be requested from a plain Safari tab).
 - The backend (`app/`) is a plain JSON REST API; the frontend
   (`static/app.js`) is a thin vanilla-JS client (drag-and-drop via SortableJS)
   with no build step. That split is intentional so the frontend can later be

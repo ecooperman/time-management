@@ -371,12 +371,22 @@ def update_task(db: Session, task_id: int, updates: schemas.TaskUpdate):
                 job.applied = True
     elif "status" in data and not becoming_done and was_done:
         # Reopening (or putting on hold) a previously-done task un-does the
-        # completion side effect on its linked job, if it has one.
+        # completion side effect on its linked job, if it has one - and
+        # restarts its reminder plan from scratch, same reasoning as below.
         data["completed_at"] = None
+        data["remind_count_sent"] = 0
+        data["last_reminded_at"] = None
         if db_task.job_id is not None:
             job = get_job(db, db_task.job_id)
             if job is not None:
                 job.applied = False
+
+    # Editing any part of the reminder plan restarts it - otherwise raising
+    # remind_max_count after it's already been hit (or changing remind_at
+    # to a new time) would carry over stale bookkeeping from the old plan.
+    if any(field in data for field in ("remind_at", "remind_snooze_minutes", "remind_max_count")):
+        data.setdefault("remind_count_sent", 0)
+        data.setdefault("last_reminded_at", None)
 
     if data.get("status") == models.TaskStatus.on_hold:
         data.setdefault("scheduled_date", None)
@@ -430,3 +440,37 @@ def delete_task(db: Session, task_id: int):
     if was_repeating:
         cleanup_future_series_occurrences(db, task_id, None)
     return True
+
+
+def upsert_push_subscription(db: Session, subscription: schemas.PushSubscriptionCreate):
+    """Keyed by endpoint (the browser assigns a fresh one per subscribe
+    call, but re-subscribing the same device can still land on the same
+    endpoint) - re-subscribing just refreshes the keys rather than making
+    a duplicate row."""
+    existing = db.query(models.PushSubscription).filter(
+        models.PushSubscription.endpoint == subscription.endpoint
+    ).first()
+    if existing:
+        existing.p256dh = subscription.keys.p256dh
+        existing.auth = subscription.keys.auth
+        db.commit()
+        return existing
+    db_subscription = models.PushSubscription(
+        endpoint=subscription.endpoint,
+        p256dh=subscription.keys.p256dh,
+        auth=subscription.keys.auth,
+    )
+    db.add(db_subscription)
+    db.commit()
+    db.refresh(db_subscription)
+    return db_subscription
+
+
+def delete_push_subscription_by_endpoint(db: Session, endpoint: str) -> bool:
+    result = db.query(models.PushSubscription).filter(models.PushSubscription.endpoint == endpoint).delete()
+    db.commit()
+    return result > 0
+
+
+def get_push_subscriptions(db: Session):
+    return db.query(models.PushSubscription).all()

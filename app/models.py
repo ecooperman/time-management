@@ -116,5 +116,34 @@ class Task(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
 
+    # Push-notification reminder plan (see app/reminders.py for the
+    # scheduler that acts on these). remind_at is the first nag; if
+    # remind_snooze_minutes is also set, it keeps re-nagging on that
+    # interval until either the task is done or remind_max_count is hit
+    # (null = no cap). remind_count_sent/last_reminded_at are bookkeeping
+    # the scheduler owns - editing any of the three plan fields above
+    # resets both (see crud.update_task), and reopening a done task does
+    # too, so a task's nag cycle always restarts clean.
+    remind_at = Column(DateTime, nullable=True)
+    remind_snooze_minutes = Column(Integer, nullable=True)
+    remind_max_count = Column(Integer, nullable=True)
+    remind_count_sent = Column(Integer, nullable=False, default=0)
+    last_reminded_at = Column(DateTime, nullable=True)
+
     category = relationship("Category", back_populates="tasks")
     job = relationship("Job", back_populates="tasks")
+
+
+class PushSubscription(Base):
+    """One row per subscribed browser/device (Web Push - see app/push.py).
+    Flat list, no owner/person linkage - every subscribed device gets
+    every reminder, by explicit choice (this app doesn't have per-task
+    ownership the way Job does, and there was no request to add it)."""
+
+    __tablename__ = "push_subscriptions"
+
+    id = Column(Integer, primary_key=True)
+    endpoint = Column(String, unique=True, nullable=False)
+    p256dh = Column(String, nullable=False)
+    auth = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

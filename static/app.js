@@ -3,6 +3,7 @@ let categoriesById = {};
 let jobs = [];
 let jobsById = {};
 let activeTaskId = null;
+let activeTaskScheduledDateKey = null; // "YYYY-MM-DD" of the open task's scheduled_date, if any - needed at save time to combine with the reminder time input into a full remind_at datetime
 
 // Multi-column views don't fit a phone-width screen, and with the sidebar
 // and calendar stacked (not side-by-side) below the 640px breakpoint,
@@ -642,6 +643,17 @@ function openModal(task) {
   repeatUntilRow.classList.toggle("hidden", !repeatCheckbox.checked);
   document.getElementById("modal-repeat-disabled-hint").classList.toggle("hidden", isScheduled);
 
+  activeTaskScheduledDateKey = isScheduled ? task.scheduled_date.slice(0, 10) : null;
+  const remindCheckbox = document.getElementById("modal-task-remind");
+  const remindFields = document.getElementById("modal-remind-fields");
+  remindCheckbox.disabled = !isScheduled;
+  remindCheckbox.checked = isScheduled && !!task.remind_at;
+  document.getElementById("modal-task-remind-time").value = task.remind_at ? task.remind_at.slice(11, 16) : "";
+  document.getElementById("modal-task-remind-snooze").value = task.remind_snooze_minutes || "";
+  document.getElementById("modal-task-remind-max").value = task.remind_max_count ?? "";
+  remindFields.classList.toggle("hidden", !remindCheckbox.checked);
+  document.getElementById("modal-remind-disabled-hint").classList.toggle("hidden", isScheduled);
+
   const linkedJobEl = document.getElementById("modal-linked-job");
   if (task.job) {
     linkedJobEl.classList.remove("hidden");
@@ -677,6 +689,7 @@ function openModal(task) {
 
 function closeModal() {
   activeTaskId = null;
+  activeTaskScheduledDateKey = null;
   document.getElementById("task-modal").classList.add("hidden");
 }
 
@@ -687,8 +700,25 @@ function initModal() {
     document.getElementById("modal-repeat-until-row").classList.toggle("hidden", !e.target.checked);
   });
 
+  document.getElementById("modal-task-remind").addEventListener("change", (e) => {
+    document.getElementById("modal-remind-fields").classList.toggle("hidden", !e.target.checked);
+  });
+
   document.getElementById("modal-save").addEventListener("click", async () => {
     const repeatUntil = document.getElementById("modal-task-repeat-until").value;
+
+    const remindEnabled = document.getElementById("modal-task-remind").checked;
+    const remindTime = document.getElementById("modal-task-remind-time").value;
+    const remindSnooze = document.getElementById("modal-task-remind-snooze").value;
+    const remindMax = document.getElementById("modal-task-remind-max").value;
+    // remind_at needs a full datetime - combine the task's own scheduled
+    // day with the time picked here. If the checkbox is on but no time was
+    // actually chosen yet, treat it as not-set rather than guessing one.
+    const remindAt =
+      remindEnabled && remindTime && activeTaskScheduledDateKey
+        ? `${activeTaskScheduledDateKey}T${remindTime}:00`
+        : null;
+
     await Global.fetchJSON(`/api/tasks/${activeTaskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -705,6 +735,9 @@ function initModal() {
         is_important: document.getElementById("modal-task-important").checked,
         repeat_daily: document.getElementById("modal-task-repeat").checked,
         repeat_until: repeatUntil ? `${repeatUntil}T00:00:00` : null,
+        remind_at: remindAt,
+        remind_snooze_minutes: remindAt && remindSnooze ? Number(remindSnooze) : null,
+        remind_max_count: remindAt && remindMax ? Number(remindMax) : null,
       }),
     });
     closeModal();

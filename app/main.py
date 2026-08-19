@@ -1,3 +1,4 @@
+import asyncio
 import subprocess
 from pathlib import Path
 
@@ -8,7 +9,8 @@ from fastapi.templating import Jinja2Templates
 
 from .config import SHARED_ASSETS_BASE
 from .database import SessionLocal
-from .routers import categories, jobs, people, tasks
+from .reminders import run_reminder_loop
+from .routers import categories, jobs, people, push, tasks
 from .seed import seed_categories
 
 # Schema is owned by Alembic migrations (see migrations/) - run
@@ -75,7 +77,14 @@ async def no_cache(request: Request, call_next):
 app.include_router(categories.router)
 app.include_router(jobs.router)
 app.include_router(people.router)
+app.include_router(push.router)
 app.include_router(tasks.router)
+
+
+@app.on_event("startup")
+async def _start_reminder_loop():
+    asyncio.create_task(run_reminder_loop())
+
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 

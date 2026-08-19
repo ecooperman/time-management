@@ -161,7 +161,78 @@ function initAddPersonForm() {
   });
 }
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+async function refreshPushStatus() {
+  const statusEl = document.getElementById("push-status");
+  const btn = document.getElementById("push-subscribe-btn");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    statusEl.textContent = "This browser doesn't support push notifications.";
+    btn.disabled = true;
+    return;
+  }
+  const registration = await navigator.serviceWorker.ready;
+  const existing = await registration.pushManager.getSubscription();
+  if (existing) {
+    statusEl.textContent = "Reminders are enabled on this device.";
+    btn.textContent = "Disable reminders on this device";
+  } else {
+    statusEl.textContent = "Reminders are not enabled on this device yet.";
+    btn.textContent = "Enable reminders on this device";
+  }
+}
+
+function initPushSubscribe() {
+  document.getElementById("push-subscribe-btn").addEventListener("click", async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const existing = await registration.pushManager.getSubscription();
+
+      if (existing) {
+        await Global.fetchJSON("/api/push/unsubscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: existing.endpoint }),
+        });
+        await existing.unsubscribe();
+        Global.showMessage("Reminders disabled on this device.", "success");
+        refreshPushStatus();
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        Global.showMessage("Notification permission was not granted.", "error");
+        return;
+      }
+
+      const { key } = await Global.fetchJSON("/api/push/vapid-public-key");
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key),
+      });
+      await Global.fetchJSON("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription.toJSON()),
+      });
+      Global.showMessage("Reminders enabled on this device.", "success");
+      refreshPushStatus();
+    } catch (err) {
+      Global.showMessage(err.message, "error");
+    }
+  });
+  refreshPushStatus();
+}
+
 initAddForm();
 initAddPersonForm();
+initPushSubscribe();
 loadCategories();
 loadPeople();

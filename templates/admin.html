@@ -6,6 +6,14 @@
   <title>Settings - Time Management</title>
   <link rel="stylesheet" href="{{ shared_assets_base }}/theme.css" />
   <link rel="stylesheet" href="/style.css" />
+
+  <!-- Home screen / installed-app support -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#2b6f5c" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Tasks" />
 </head>
 <body>
   <div id="admin-app">
@@ -39,6 +47,16 @@
       <input type="text" id="new-person-name" placeholder="New person's name" required />
       <button type="submit">Add person</button>
     </form>
+
+    <h2 class="admin-section-heading">Reminders</h2>
+    <p class="note">
+      Push notifications for tasks with a reminder set (see a task's edit
+      form). Per-device - enable this on every phone/browser you want
+      nagged, not just one. iOS needs 16.4+ and this app added to your
+      home screen first (not a regular Safari tab).
+    </p>
+    <button type="button" id="push-subscribe-btn">Enable reminders on this device</button>
+    <p id="push-status" class="note"></p>
   </div>
 
   <div id="app-version"></div>

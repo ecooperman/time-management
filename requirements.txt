@@ -8,3 +8,4 @@ python-multipart
 anthropic
 httpx
 pyyaml
+pywebpush

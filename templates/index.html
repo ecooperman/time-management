@@ -7,6 +7,14 @@
   <link rel="stylesheet" href="{{ shared_assets_base }}/theme.css" />
   <link rel="stylesheet" href="/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+  <!-- Home screen / installed-app support -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#2b6f5c" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Tasks" />
 </head>
 <body>
   <div id="app">
@@ -117,6 +125,36 @@
       </label>
       <div id="modal-repeat-disabled-hint" class="note hidden">
         Schedule this task on a day first to enable repeating.
+      </div>
+
+      <label class="checkbox-label">
+        <input type="checkbox" id="modal-task-remind" />
+        Remind me if not done
+      </label>
+      <div id="modal-remind-fields" class="hidden">
+        <label>
+          Remind me at
+          <input type="time" id="modal-task-remind-time" />
+        </label>
+        <div class="row">
+          <label>
+            Snooze every <span class="hint">(if still not done)</span>
+            <select id="modal-task-remind-snooze">
+              <option value="">Don't repeat</option>
+              <option value="15">15 min</option>
+              <option value="30">30 min</option>
+              <option value="60">1 hour</option>
+              <option value="120">2 hours</option>
+            </select>
+          </label>
+          <label>
+            Up to <span class="hint">(blank = no limit)</span>
+            <input type="number" id="modal-task-remind-max" min="1" step="1" placeholder="No limit" />
+          </label>
+        </div>
+      </div>
+      <div id="modal-remind-disabled-hint" class="note hidden">
+        Schedule this task on a day first to set a reminder.
       </div>
 
       <div class="status-row">

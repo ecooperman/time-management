@@ -13,6 +13,15 @@ WorkingDirectory=/opt/apps/time-management
 # correct for this droplet - only override it if that ever changes.
 Environment=INTERNAL_API_TOKEN=
 Environment=ANTHROPIC_API_KEY=
+# Task reminder push notifications (app/push.py, app/reminders.py). Run
+# `python -m app.push generate-vapid-keys` once (from the venv) to get
+# real values for these two - see README.md. Both are plain base64url
+# strings (only A-Z/a-z/0-9/-/_), so unlike a hand-picked password they
+# won't hit the systemd Environment= quoting trap a symbol-heavy secret
+# can (e.g. a literal % breaks specifier expansion).
+Environment=VAPID_PUBLIC_KEY=
+Environment=VAPID_PRIVATE_KEY=
+Environment=VAPID_SUBJECT=mailto:evanjcooperman@gmail.com
 ExecStart=/opt/apps/time-management/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8010
 Restart=on-failure
 RestartSec=3

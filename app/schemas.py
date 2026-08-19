@@ -168,6 +168,9 @@ class TaskUpdate(BaseModel):
     job_id: Optional[int] = None
     repeat_daily: Optional[bool] = None
     repeat_until: Optional[datetime] = None
+    remind_at: Optional[datetime] = None
+    remind_snooze_minutes: Optional[int] = None
+    remind_max_count: Optional[int] = None
 
 
 class Task(TaskBase):
@@ -185,6 +188,28 @@ class Task(TaskBase):
     repeat_daily: bool = False
     repeat_until: Optional[datetime] = None
     series_id: Optional[int] = None
+    remind_at: Optional[datetime] = None
+    remind_snooze_minutes: Optional[int] = None
+    remind_max_count: Optional[int] = None
+    remind_count_sent: int = 0
+    last_reminded_at: Optional[datetime] = None
+
+
+class PushSubscriptionKeys(BaseModel):
+    p256dh: str
+    auth: str
+
+
+class PushSubscriptionCreate(BaseModel):
+    """Matches the browser's PushSubscription.toJSON() shape verbatim, so
+    the frontend can POST it straight through with no reshaping."""
+
+    endpoint: str
+    keys: PushSubscriptionKeys
+
+
+class PushUnsubscribeRequest(BaseModel):
+    endpoint: str
 
 
 class ReorderItem(BaseModel):
