@@ -74,8 +74,10 @@ def delete_job(job_id: int, db: Session = Depends(get_db)):
 # setup this all depends on.
 
 
-def _safe_filename(job, ext: str) -> str:
+def _safe_filename(job, ext: str, *, kind: Optional[str] = None) -> str:
     base = job.name if not job.company else f"{job.name} - {job.company}"
+    if kind:
+        base = f"{base} - {kind}"
     base = re.sub(r"[^A-Za-z0-9 _.-]", " ", base)  # drop disallowed chars as spaces, not gaps
     base = re.sub(r"\s+", " ", base).strip()
     return f"{base or f'resume_{job.id}'}.{ext}"
@@ -137,6 +139,45 @@ def download_resume_pdf(job_id: int, db: Session = Depends(get_db)):
 @router.get("/{job_id}/resume.docx")
 def download_resume_docx(job_id: int, db: Session = Depends(get_db)):
     return _download_resume(db, job_id, "docx")
+
+
+def _download_cover_letter(db: Session, job_id: int, fmt: str) -> Response:
+    job = crud.get_job(db, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not job.generated_cover_letter:
+        raise HTTPException(status_code=404, detail="No cover letter has been generated for this job yet")
+    # basics (name/contact) for the letterhead comes from the tailored
+    # resume generated alongside it - both are always produced together by
+    # _generate_and_store, so this should always be present too.
+    basics = {}
+    if job.generated_resume_yaml:
+        basics = yaml.safe_load(job.generated_resume_yaml).get("basics", {})
+    try:
+        content = resume_gen.render_cover_letter(basics, job.generated_cover_letter, fmt)
+    except resume_gen.ResumeGenerationError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    media_type = (
+        "application/pdf"
+        if fmt == "pdf"
+        else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    filename = _safe_filename(job, fmt, kind="Cover Letter")
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{job_id}/cover-letter.pdf")
+def download_cover_letter_pdf(job_id: int, db: Session = Depends(get_db)):
+    return _download_cover_letter(db, job_id, "pdf")
+
+
+@router.get("/{job_id}/cover-letter.docx")
+def download_cover_letter_docx(job_id: int, db: Session = Depends(get_db)):
+    return _download_cover_letter(db, job_id, "docx")
 
 
 def _run_bulk_generation(batch_id: str, job_ids: List[int]) -> None:

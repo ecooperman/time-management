@@ -111,6 +111,33 @@ def render_document(resume_data: dict, fmt: str) -> bytes:
     return resp.content
 
 
+def render_cover_letter(basics: dict, cover_letter_text: str, fmt: str) -> bytes:
+    """Render a generated cover letter (basics for the letterhead + the
+    plain-text body already stored on the Job row) into PDF or DOCX bytes
+    via the resume app's rendering pipeline. fmt is "pdf" or "docx"."""
+    token = _require_internal_token()
+    try:
+        resp = httpx.post(
+            f"{config.RESUME_ADMIN_URL}/api/render-cover-letter",
+            headers={"X-Internal-Token": token},
+            json={"basics": basics, "cover_letter_text": cover_letter_text, "format": fmt},
+            timeout=60.0,  # headless Chromium launch + print can take a few seconds
+        )
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        detail = e.response.text
+        try:
+            detail = e.response.json().get("detail", detail)
+        except ValueError:
+            pass
+        raise ResumeGenerationError(f"Resume app couldn't render the cover letter {fmt}: {detail}")
+    except httpx.HTTPError as e:
+        raise ResumeGenerationError(
+            f"Could not reach the resume app at {config.RESUME_ADMIN_URL}: {e}"
+        )
+    return resp.content
+
+
 SYSTEM_PROMPT = """You tailor a resume to a specific job description and write a matching cover letter.
 
 Rules:

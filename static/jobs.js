@@ -146,7 +146,19 @@ function resumeActionsBlock(job) {
       letterText.className = "job-admin-cover-letter-text";
       letterText.textContent = job.generated_cover_letter;
 
-      letterBox.append(copyBtn, letterText);
+      const letterDownloads = document.createElement("div");
+      letterDownloads.className = "job-admin-resume-downloads";
+      const letterPdfLink = document.createElement("a");
+      letterPdfLink.href = `/api/jobs/${job.id}/cover-letter.pdf`;
+      letterPdfLink.className = "job-admin-resume-download";
+      letterPdfLink.textContent = "Download PDF";
+      const letterDocxLink = document.createElement("a");
+      letterDocxLink.href = `/api/jobs/${job.id}/cover-letter.docx`;
+      letterDocxLink.className = "job-admin-resume-download";
+      letterDocxLink.textContent = "Download DOCX";
+      letterDownloads.append(letterPdfLink, letterDocxLink);
+
+      letterBox.append(copyBtn, letterText, letterDownloads);
       toggle.addEventListener("click", () => {
         const showing = letterBox.classList.toggle("hidden");
         toggle.textContent = showing ? "Show cover letter" : "Hide cover letter";
