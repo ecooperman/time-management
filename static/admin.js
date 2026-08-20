@@ -81,9 +81,12 @@ function initAddForm() {
 }
 
 function personRowElement(person, resumePeople) {
+  const wrap = document.createElement("div");
+  wrap.className = "person-row-wrap";
+  wrap.dataset.personId = person.id;
+
   const row = document.createElement("div");
   row.className = "category-row";
-  row.dataset.personId = person.id;
 
   const colorInput = document.createElement("input");
   colorInput.type = "color";
@@ -159,10 +162,20 @@ function personRowElement(person, resumePeople) {
 
   row.appendChild(colorInput);
   row.appendChild(nameInput);
-  row.appendChild(resumeSelect);
   row.appendChild(saveBtn);
   row.appendChild(deleteBtn);
-  return row;
+
+  // A 5th inline element here would starve the name field in this
+  // narrow column (this isn't hypothetical - it visibly did, before this
+  // was split out) - its own line has all the room it needs instead.
+  const resumeRow = document.createElement("label");
+  resumeRow.className = "person-resume-row";
+  resumeRow.append("Resume: ");
+  resumeRow.appendChild(resumeSelect);
+
+  wrap.appendChild(row);
+  wrap.appendChild(resumeRow);
+  return wrap;
 }
 
 async function loadPeople() {

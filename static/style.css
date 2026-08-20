@@ -696,6 +696,30 @@ main {
   flex-shrink: 0;
 }
 
+.person-row-wrap {
+  margin-bottom: 10px;
+}
+
+.person-row-wrap .category-row {
+  margin-bottom: 4px;
+}
+
+.person-resume-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  padding-left: 48px; /* lines the select up under the name field, past the color swatch */
+}
+
+.person-resume-row select {
+  font-size: 12px;
+  padding: 4px 6px;
+  width: auto;
+  margin-top: 0;
+}
+
 .category-row button.danger {
   color: #b3261e;
   border-color: #b3261e;
