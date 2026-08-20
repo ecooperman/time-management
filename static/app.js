@@ -172,7 +172,7 @@ function companyNode(job) {
   return document.createTextNode(job.company);
 }
 
-function taskCardElement(task) {
+function taskCardElement(task, { showDoneCheckbox = false } = {}) {
   const cat = categoriesById[task.category_id];
   const card = document.createElement("div");
   card.className = "task-card status-" + task.status + (task.is_important ? " important" : "");
@@ -181,6 +181,30 @@ function taskCardElement(task) {
 
   const title = document.createElement("div");
   title.className = "task-title";
+
+  if (showDoneCheckbox) {
+    const doneCheckbox = document.createElement("input");
+    doneCheckbox.type = "checkbox";
+    doneCheckbox.className = "task-done-checkbox";
+    doneCheckbox.checked = task.status === "done";
+    // Same status values the modal's Mark done/Reopen buttons already send
+    // (see initModal below) - stays consistent with their side effects
+    // (completed_at, linked job's applied flag, reminder bookkeeping
+    // reset), all of which only crud.update_task actually implements, so
+    // this goes through the same PATCH + refreshAll() rather than just
+    // toggling a class locally.
+    doneCheckbox.addEventListener("click", (e) => e.stopPropagation());
+    doneCheckbox.addEventListener("change", async () => {
+      await Global.fetchJSON(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: doneCheckbox.checked ? "done" : "open" }),
+      });
+      refreshAll();
+    });
+    title.appendChild(doneCheckbox);
+  }
+
   if (task.is_important) {
     const star = document.createElement("span");
     star.className = "star";
@@ -342,7 +366,7 @@ function renderGrid(days, buckets) {
     list.className = "task-list";
     list.dataset.date = key;
     for (const task of buckets[key] || []) {
-      list.appendChild(taskCardElement(task));
+      list.appendChild(taskCardElement(task, { showDoneCheckbox: true }));
     }
     col.appendChild(list);
 

@@ -209,6 +209,14 @@ button {
 
 .task-card .task-title {
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-card .task-done-checkbox {
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .task-card .task-meta {
