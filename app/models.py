@@ -33,6 +33,12 @@ class Person(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
     color = Column(String, nullable=False)
+    # The resume app's own Person.slug (see that app's app/models.py) that
+    # resume generation should tailor for this person's jobs - e.g. "rach".
+    # Null means "use the resume app's default person" - so whoever's
+    # already the default there needs zero configuration here; only a
+    # second household member needs to set this. See app/resume_gen.py.
+    resume_person_slug = Column(String, nullable=True)
 
     jobs = relationship("Job", back_populates="owner")
 
@@ -66,7 +72,7 @@ class Job(Base):
     jd_text = Column(String, nullable=True)
 
     # Populated by the "Generate Resume" feature: a tailored copy of
-    # resume.yaml (fetched live from the resume app, then tailored to this
+    # resume data (fetched live from the resume app, then tailored to this
     # job's jd_text by Claude) plus a matching cover letter. Rendered to
     # PDF/DOCX on demand via the resume app, not stored as binary here -
     # see app/resume_gen.py. Regenerating overwrites all three together.

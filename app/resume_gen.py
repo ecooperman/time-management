@@ -1,10 +1,10 @@
 """
-Resume generation: fetch resume.yaml live from the resume app, tailor it to
+Resume generation: fetch the right resume data live from the resume app, tailor it to
 a specific job with Claude, and render the result to PDF/DOCX via the same
 resume app. See DEPLOYMENT.md / README.md for the INTERNAL_API_TOKEN and
 ANTHROPIC_API_KEY setup this depends on.
 
-Nothing here touches the resume app's actual resume.yaml or site/ output -
+Nothing here touches the resume app's actual resume files or site/ output -
 every render happens into a throwaway temp directory on that end (see
 resume/app/admin.py). This module only ever reads from the resume app and
 sends it ad-hoc tailored data to render.
@@ -35,14 +35,45 @@ def _require_internal_token() -> str:
     return config.INTERNAL_API_TOKEN
 
 
-def fetch_resume_data() -> dict:
-    """The current resume.yaml from the resume app, as a dict. Fetched
-    live on every call rather than cached, so a same-day edit to
-    resume.yaml is always picked up."""
+def fetch_resume_data(resume_person_slug: str = None) -> dict:
+    """The resume app's default person's data, as a dict - or a specific
+    household member's own data (resume_person_slug, e.g. "rach", from
+    Person.resume_person_slug) when generating for a job owned by someone
+    other than the default person. Fetched live on every call rather than
+    cached, so an edit made through the resume app's People admin UI is
+    always picked up immediately."""
     token = _require_internal_token()
+    params = {"person": resume_person_slug} if resume_person_slug else {}
     try:
         resp = httpx.get(
             f"{config.RESUME_ADMIN_URL}/api/resume-data",
+            headers={"X-Internal-Token": token},
+            params=params,
+            timeout=10.0,
+        )
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise ResumeGenerationError(
+                f"The resume app has no person with slug {resume_person_slug!r} - "
+                "check this person's Settings entry."
+            )
+        raise ResumeGenerationError(f"Could not reach the resume app at {config.RESUME_ADMIN_URL}: {e}")
+    except httpx.HTTPError as e:
+        raise ResumeGenerationError(
+            f"Could not reach the resume app at {config.RESUME_ADMIN_URL}: {e}"
+        )
+    return resp.json()
+
+
+def list_resume_people() -> list:
+    """Every person the resume app currently has, as {slug, name,
+    is_default} - source list for the People admin page's per-person resume
+    dropdown."""
+    token = _require_internal_token()
+    try:
+        resp = httpx.get(
+            f"{config.RESUME_ADMIN_URL}/api/resume-people",
             headers={"X-Internal-Token": token},
             timeout=10.0,
         )
@@ -51,7 +82,7 @@ def fetch_resume_data() -> dict:
         raise ResumeGenerationError(
             f"Could not reach the resume app at {config.RESUME_ADMIN_URL}: {e}"
         )
-    return resp.json()
+    return resp.json()["people"]
 
 
 def render_document(resume_data: dict, fmt: str) -> bytes:
@@ -159,11 +190,14 @@ def _tailor(resume_data: dict, job) -> Tuple[dict, str]:
 
 
 def generate_for_job(job) -> Tuple[str, str]:
-    """Full flow for one job: fetch resume.yaml live, tailor it to the job,
-    return (tailored_resume_yaml_text, cover_letter_text) ready to store on
-    the Job row. Raises ResumeGenerationError on any failure - callers
-    should not partially save state on error."""
-    resume_data = fetch_resume_data()
+    """Full flow for one job: fetch the right resume data live (the job
+    owner's own person if they've picked one in People, else the resume
+    app's default person), tailor it to the job, return
+    (tailored_resume_yaml_text, cover_letter_text) ready to store on the Job
+    row. Raises ResumeGenerationError on any failure - callers should not
+    partially save state on error."""
+    resume_person_slug = job.owner.resume_person_slug if job.owner else None
+    resume_data = fetch_resume_data(resume_person_slug)
     tailored, cover_letter = _tailor(resume_data, job)
     tailored_yaml = yaml.safe_dump(tailored, sort_keys=False, allow_unicode=True)
     return tailored_yaml, cover_letter

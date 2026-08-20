@@ -169,16 +169,24 @@ upgrade head`, and restarts the service. Needs these repo secrets set once
 - Each job card on the Jobs page can generate a tailored resume + cover
   letter ("Generate Resume + Cover Letter", or "Generate Resumes for
   Filtered Jobs" to do a whole filtered batch at once, with a confirmation
-  modal listing exactly which jobs first). This fetches the live
-  `resume.yaml` from the `resume` app, asks Claude to tailor it to that
-  job's stored JD text (reordering/trimming/rephrasing only - never
-  inventing experience) plus write a cover letter, and stores the result on
-  the job. "Download PDF"/"Download DOCX" then render on demand through the
-  `resume` app's own Jinja2/Playwright/python-docx pipeline (see
-  `app/resume_gen.py` and the `resume` app's `app/render.py`/`app/admin.py`)
-  - the output is styled like the real resume, not a plain-text dump.
-  Regenerating overwrites the previous result for that job. See
-  "Environment variables" above for what this needs configured; the
+  modal listing exactly which jobs first). This fetches the live resume
+  data from the `resume` app - the job owner's own person if they've picked
+  one in People (Settings), else the resume app's default person - asks
+  Claude to tailor it to that job's stored JD text
+  (reordering/trimming/rephrasing only - never inventing experience) plus
+  write a cover letter, and stores the result on the job. The People
+  section's "Resume" dropdown is populated live from the resume app itself
+  (`GET /api/people/resume-people` here, proxying the resume app's own
+  `GET /api/resume-people`) - time-management never stores or manages any
+  resume content itself, that all lives in the resume app's own People
+  admin page (a completely separate, browser-facing UI from this proxy -
+  see the `resume` app's README). "Download PDF"/"Download DOCX" then
+  render on demand through the `resume` app's own
+  Jinja2/Playwright/python-docx pipeline (see `app/resume_gen.py` and the
+  `resume` app's `app/render.py`/`app/admin.py`) - the output is styled
+  like the real resume, not a plain-text dump. Regenerating overwrites the
+  previous result for that job. See "Environment variables" above for what
+  this needs configured; the
   `resume` app must be running and reachable for it to work.
 - The calendar defaults to Work Week view on load.
 - A task can be set to repeat daily from its modal (only once it's been

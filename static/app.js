@@ -852,11 +852,27 @@ function initModal() {
 }
 
 function initAddTaskForm() {
+  // Defaults the schedule-date field to today the first time it's touched,
+  // rather than leaving it on a blank/placeholder date the user has to
+  // fill in by hand for the common case of "add this for today". Only
+  // fires once - if they then deliberately clear it back to blank (meaning
+  // "backlog, no schedule"), leave it alone rather than fighting them.
+  const scheduleDateInput = document.getElementById("task-schedule-date");
+  scheduleDateInput.addEventListener(
+    "focus",
+    () => {
+      if (!scheduleDateInput.value) scheduleDateInput.value = toISODate(new Date());
+    },
+    { once: true }
+  );
+
   document.getElementById("add-task-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const title = document.getElementById("task-title").value.trim();
     if (!title) return;
-    await Global.fetchJSON("/api/tasks", {
+    const scheduleDate = scheduleDateInput.value;
+
+    const task = await Global.fetchJSON("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -869,8 +885,26 @@ function initAddTaskForm() {
         is_important: document.getElementById("task-important").checked,
       }),
     });
+
+    // TaskCreate doesn't take a schedule date directly (a plain backlog
+    // task is the common case) - same two-step create-then-PATCH pattern
+    // handleJobDroppedOnTaskList already uses just above for the same
+    // reason. scheduleDate is already a plain "YYYY-MM-DD" string straight
+    // from the date input's own value - build the datetime string directly
+    // rather than routing it through `new Date(scheduleDate)`, which
+    // parses a date-only string as UTC midnight and would silently roll
+    // back a day in any timezone behind UTC (the exact bug class just
+    // fixed for reminders - see localTimeToNaiveUTC above).
+    if (scheduleDate) {
+      await Global.fetchJSON(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduled_date: `${scheduleDate}T00:00:00`, due_date: `${scheduleDate}T00:00:00` }),
+      });
+    }
+
     e.target.reset();
-    refreshBacklog();
+    refreshAll();
     collapseSidebar();
   });
 }

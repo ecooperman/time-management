@@ -80,7 +80,7 @@ function initAddForm() {
   });
 }
 
-function personRowElement(person) {
+function personRowElement(person, resumePeople) {
   const row = document.createElement("div");
   row.className = "category-row";
   row.dataset.personId = person.id;
@@ -93,6 +93,34 @@ function personRowElement(person) {
   nameInput.type = "text";
   nameInput.value = person.name;
 
+  const resumeSelect = document.createElement("select");
+  const defaultPerson = resumePeople.find((p) => p.is_default);
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = defaultPerson ? `Default (${defaultPerson.name})` : "Default";
+  resumeSelect.appendChild(defaultOption);
+  // If this person's saved slug isn't in the resume app's current list
+  // (resume app was unreachable when this loaded, or that person was
+  // renamed/deleted there since), include it anyway so Save doesn't
+  // silently wipe their choice back to the default the moment they click
+  // it.
+  const knownSlugs = resumePeople.map((p) => p.slug);
+  const extraSlug =
+    person.resume_person_slug && !knownSlugs.includes(person.resume_person_slug) ? person.resume_person_slug : null;
+  for (const p of resumePeople) {
+    const opt = document.createElement("option");
+    opt.value = p.slug;
+    opt.textContent = p.name;
+    resumeSelect.appendChild(opt);
+  }
+  if (extraSlug) {
+    const opt = document.createElement("option");
+    opt.value = extraSlug;
+    opt.textContent = `${extraSlug} (not found in resume app)`;
+    resumeSelect.appendChild(opt);
+  }
+  resumeSelect.value = person.resume_person_slug || "";
+
   const saveBtn = document.createElement("button");
   saveBtn.type = "button";
   saveBtn.textContent = "Save";
@@ -101,7 +129,11 @@ function personRowElement(person) {
       await Global.fetchJSON(`/api/people/${person.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: nameInput.value, color: colorInput.value }),
+        body: JSON.stringify({
+          name: nameInput.value,
+          color: colorInput.value,
+          resume_person_slug: resumeSelect.value || null,
+        }),
       });
       Global.showMessage(`Saved "${nameInput.value}".`, "success");
       loadPeople();
@@ -127,6 +159,7 @@ function personRowElement(person) {
 
   row.appendChild(colorInput);
   row.appendChild(nameInput);
+  row.appendChild(resumeSelect);
   row.appendChild(saveBtn);
   row.appendChild(deleteBtn);
   return row;
@@ -134,10 +167,24 @@ function personRowElement(person) {
 
 async function loadPeople() {
   const people = await Global.fetchJSON("/api/people");
+
+  // The resume app owns every person and their resume content - this just
+  // asks it who's available rather than storing/uploading anything
+  // resume-related here. Degrades gracefully (empty list, not a
+  // page-breaking error) if the resume app happens to be unreachable when
+  // Settings loads.
+  let resumePeople = [];
+  try {
+    const data = await Global.fetchJSON("/api/people/resume-people");
+    resumePeople = data.people;
+  } catch (err) {
+    Global.showMessage(`Couldn't load people from the resume app: ${err.message}`, "error");
+  }
+
   const container = document.getElementById("person-rows");
   container.innerHTML = "";
   for (const person of people) {
-    container.appendChild(personRowElement(person));
+    container.appendChild(personRowElement(person, resumePeople));
   }
 }
 

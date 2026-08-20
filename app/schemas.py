@@ -29,6 +29,7 @@ class Category(CategoryBase):
 class PersonBase(BaseModel):
     name: str
     color: str
+    resume_person_slug: Optional[str] = None
 
 
 class PersonCreate(PersonBase):
@@ -38,6 +39,7 @@ class PersonCreate(PersonBase):
 class PersonUpdate(BaseModel):
     name: Optional[str] = None
     color: Optional[str] = None
+    resume_person_slug: Optional[str] = None
 
 
 class Person(PersonBase):
