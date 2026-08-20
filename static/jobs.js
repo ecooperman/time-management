@@ -110,6 +110,11 @@ function resumeActionsBlock(job) {
     meta.textContent = `Generated ${new Date(job.resume_generated_at).toLocaleString()}`;
     block.appendChild(meta);
 
+    const resumeLabel = document.createElement("p");
+    resumeLabel.className = "job-admin-resume-meta";
+    resumeLabel.textContent = "Resume:";
+    block.appendChild(resumeLabel);
+
     const downloads = document.createElement("div");
     downloads.className = "job-admin-resume-downloads";
     const pdfLink = document.createElement("a");
@@ -124,27 +129,10 @@ function resumeActionsBlock(job) {
     block.appendChild(downloads);
 
     if (job.generated_cover_letter) {
-      const toggle = document.createElement("button");
-      toggle.type = "button";
-      toggle.className = "job-admin-jd-toggle";
-      toggle.textContent = "Show cover letter";
-
-      const letterBox = document.createElement("div");
-      letterBox.className = "job-admin-cover-letter hidden";
-
-      const copyBtn = document.createElement("button");
-      copyBtn.type = "button";
-      copyBtn.className = "job-admin-cover-letter-copy";
-      copyBtn.textContent = "Copy";
-      copyBtn.addEventListener("click", async () => {
-        await navigator.clipboard.writeText(job.generated_cover_letter);
-        copyBtn.textContent = "Copied!";
-        setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
-      });
-
-      const letterText = document.createElement("pre");
-      letterText.className = "job-admin-cover-letter-text";
-      letterText.textContent = job.generated_cover_letter;
+      const letterLabel = document.createElement("p");
+      letterLabel.className = "job-admin-resume-meta";
+      letterLabel.textContent = "Cover letter:";
+      block.appendChild(letterLabel);
 
       const letterDownloads = document.createElement("div");
       letterDownloads.className = "job-admin-resume-downloads";
@@ -157,13 +145,7 @@ function resumeActionsBlock(job) {
       letterDocxLink.className = "job-admin-resume-download";
       letterDocxLink.textContent = "Download DOCX";
       letterDownloads.append(letterPdfLink, letterDocxLink);
-
-      letterBox.append(copyBtn, letterText, letterDownloads);
-      toggle.addEventListener("click", () => {
-        const showing = letterBox.classList.toggle("hidden");
-        toggle.textContent = showing ? "Show cover letter" : "Hide cover letter";
-      });
-      block.append(toggle, letterBox);
+      block.appendChild(letterDownloads);
     }
   }
 
