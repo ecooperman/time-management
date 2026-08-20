@@ -215,6 +215,17 @@ button {
 }
 
 .task-card .task-done-checkbox {
+  /* Undoes the generic `input, select, textarea { display: block; width:
+     100%; ... }` rule above, meant for text-like fields - every other
+     checkbox in this app opts back out of that via the .checkbox-label
+     wrapper class (see ".checkbox-label input" above), but this one isn't
+     wrapped in a label, so it needs the same reset applied directly. */
+  display: inline-block;
+  width: auto;
+  margin-top: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
   cursor: pointer;
   flex-shrink: 0;
 }
