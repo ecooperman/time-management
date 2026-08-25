@@ -212,6 +212,12 @@ button {
   display: flex;
   align-items: center;
   gap: 4px;
+  /* The title text is a flex item (even as a bare text node) - flex items
+     default to min-width: auto, so without this the browser refuses to
+     shrink long titles below their intrinsic width and they overflow the
+     card instead of wrapping onto a second line. */
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .task-card .task-done-checkbox {
