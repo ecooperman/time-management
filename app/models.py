@@ -119,6 +119,14 @@ class Task(Base):
     repeat_until = Column(DateTime, nullable=True)
     series_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
 
+    # Only meaningful on an origin (repeat_daily=True): comma-separated
+    # "YYYY-MM-DD" dates the user has explicitly deleted an occurrence for.
+    # materialize_recurring's lazy gap-filling can't otherwise tell "never
+    # created yet" apart from "deliberately removed" - without this, deleting
+    # a today-or-future occurrence of a still-active series gets silently
+    # undone the next time that date is fetched. See crud.delete_task.
+    excluded_recurrence_dates = Column(String, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
 

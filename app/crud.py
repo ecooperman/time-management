@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from sqlalchemy import func
@@ -270,12 +270,15 @@ def materialize_recurring(db: Session, start: Optional[datetime], end: Optional[
             .filter(models.Task.scheduled_date < series_end)
             .all()
         }
+        excluded = {
+            date.fromisoformat(s) for s in (origin.excluded_recurrence_dates or "").split(",") if s
+        }
 
         max_order = db.query(func.max(models.Task.sort_order)).scalar() or 0
 
         d = series_start
         while d < series_end:
-            if d.date() != origin.scheduled_date.date() and d.date() not in existing:
+            if d.date() != origin.scheduled_date.date() and d.date() not in existing and d.date() not in excluded:
                 max_order += 10
                 db.add(
                     models.Task(
@@ -468,6 +471,24 @@ def delete_task(db: Session, task_id: int):
     if db_task is None:
         return False
     was_repeating = db_task.repeat_daily
+
+    # Record a tombstone on the origin before deleting a series occurrence,
+    # so materialize_recurring's lazy gap-filling never silently recreates
+    # a lookalike for this exact date on the next fetch - without this, a
+    # deleted today-or-future occurrence of a still-active series would
+    # reappear the moment the calendar refreshes (which happens right after
+    # every delete). Deleting the origin itself doesn't need this - that
+    # already ends the whole series via cleanup_future_series_occurrences
+    # below.
+    if db_task.series_id is not None and db_task.scheduled_date is not None:
+        origin = get_task(db, db_task.series_id)
+        if origin is not None:
+            excluded = [s for s in (origin.excluded_recurrence_dates or "").split(",") if s]
+            date_str = db_task.scheduled_date.date().isoformat()
+            if date_str not in excluded:
+                excluded.append(date_str)
+                origin.excluded_recurrence_dates = ",".join(excluded)
+
     db.delete(db_task)
     db.commit()
     if was_repeating:
