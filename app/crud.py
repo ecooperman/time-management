@@ -317,6 +317,39 @@ def cleanup_future_series_occurrences(db: Session, origin_id: int, bound: Option
         db.commit()
 
 
+def stop_recurrence(db: Session, task_id: int) -> Optional[models.Task]:
+    """Ends a recurring series as of the given task's own scheduled_date -
+    that task becomes the last one in the series; nothing after it
+    continues. Works whether task_id is the origin itself or one of its
+    materialized occurrences (the common case this exists for - finding
+    and editing the origin days or weeks after a series started is exactly
+    the friction this shortcut avoids). Reuses the same repeat_until +
+    cleanup_future_series_occurrences mechanics as manually pulling in the
+    end date via update_task, just without needing to open the origin at
+    all.
+
+    Returns the origin task (which may not be task_id itself), or None if
+    the task doesn't exist or isn't part of any recurring series."""
+    task = get_task(db, task_id)
+    if task is None:
+        return None
+    if task.repeat_daily:
+        origin = task
+    elif task.series_id is not None:
+        origin = get_task(db, task.series_id)
+    else:
+        return None
+    if origin is None or origin.scheduled_date is None:
+        return None
+
+    cutoff = task.scheduled_date
+    origin.repeat_until = cutoff
+    db.commit()
+    db.refresh(origin)
+    cleanup_future_series_occurrences(db, origin.id, cutoff)
+    return origin
+
+
 def get_tasks(db: Session, start: Optional[datetime] = None, end: Optional[datetime] = None):
     apply_rollover(db)
     materialize_recurring(db, start, end)

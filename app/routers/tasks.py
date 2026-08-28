@@ -53,6 +53,16 @@ def update_task(task_id: int, updates: schemas.TaskUpdate, db: Session = Depends
     return task
 
 
+@router.post("/{task_id}/stop-recurrence", response_model=schemas.Task)
+def stop_recurrence(task_id: int, db: Session = Depends(get_db)):
+    """Ends the recurring series task_id belongs to (origin or occurrence,
+    either works) as of task_id's own date - see crud.stop_recurrence."""
+    origin = crud.stop_recurrence(db, task_id)
+    if origin is None:
+        raise HTTPException(status_code=404, detail="Task not found, or isn't part of a recurring series")
+    return origin
+
+
 @router.delete("/{task_id}")
 def delete_task(task_id: int, db: Session = Depends(get_db)):
     ok = crud.delete_task(db, task_id)

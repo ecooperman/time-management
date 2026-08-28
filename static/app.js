@@ -4,6 +4,7 @@ let jobs = [];
 let jobsById = {};
 let activeTaskId = null;
 let activeTaskScheduledDateKey = null; // "YYYY-MM-DD" of the open task's scheduled_date, if any - needed at save time to combine with the reminder time input into a full remind_at datetime
+let activeTaskSeriesId = null; // the open task's origin task id, if it's a materialized occurrence of a recurring series - needed by the Stop repeating/Edit series buttons
 
 // remind_at is stored/compared on the backend as a naive UTC datetime (same
 // convention as created_at/completed_at, via datetime.utcnow()) - but the
@@ -699,6 +700,13 @@ function openModal(task) {
   repeatUntilRow.classList.toggle("hidden", !repeatCheckbox.checked);
   document.getElementById("modal-repeat-disabled-hint").classList.toggle("hidden", isScheduled);
 
+  // A materialized occurrence's own repeat_daily is always false (only the
+  // origin has it set) - series_id is what actually says "this belongs to
+  // a series", and is the only thing shown for it. Not shown on the origin
+  // itself, which already has the real repeat-daily controls right above.
+  activeTaskSeriesId = task.series_id || null;
+  document.getElementById("modal-series-info").classList.toggle("hidden", !task.series_id);
+
   activeTaskScheduledDateKey = isScheduled ? task.scheduled_date.slice(0, 10) : null;
   const remindCheckbox = document.getElementById("modal-task-remind");
   const remindFields = document.getElementById("modal-remind-fields");
@@ -746,6 +754,7 @@ function openModal(task) {
 function closeModal() {
   activeTaskId = null;
   activeTaskScheduledDateKey = null;
+  activeTaskSeriesId = null;
   document.getElementById("task-modal").classList.add("hidden");
 }
 
@@ -758,6 +767,34 @@ function initModal() {
 
   document.getElementById("modal-task-remind").addEventListener("change", (e) => {
     document.getElementById("modal-remind-fields").classList.toggle("hidden", !e.target.checked);
+  });
+
+  document.getElementById("modal-stop-recurrence").addEventListener("click", async () => {
+    if (
+      !confirm(
+        "Stop this recurring series as of this task? Not-yet-passed future occurrences will be removed; past ones stay as history."
+      )
+    ) {
+      return;
+    }
+    try {
+      await Global.fetchJSON(`/api/tasks/${activeTaskId}/stop-recurrence`, { method: "POST" });
+      Global.showMessage("Recurrence stopped.", "success");
+      closeModal();
+      refreshAll();
+    } catch (err) {
+      Global.showMessage(err.message, "error");
+    }
+  });
+
+  document.getElementById("modal-edit-series").addEventListener("click", async () => {
+    try {
+      const origin = await Global.fetchJSON(`/api/tasks/${activeTaskSeriesId}`);
+      closeModal();
+      openModal(origin);
+    } catch (err) {
+      Global.showMessage(err.message, "error");
+    }
   });
 
   document.getElementById("modal-save").addEventListener("click", async () => {
