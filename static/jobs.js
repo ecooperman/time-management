@@ -538,7 +538,17 @@ function initAddJobForm() {
   });
 }
 
+function showImportResultBanner(text, kind) {
+  const banner = document.getElementById("import-result-banner");
+  document.getElementById("import-result-text").textContent = text;
+  banner.className = `page-message ${kind}`;
+}
+
 function initImportJobs() {
+  document.getElementById("import-result-close").addEventListener("click", () => {
+    document.getElementById("import-result-banner").classList.add("hidden");
+  });
+
   document.getElementById("import-jobs-file").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -554,10 +564,13 @@ function initImportJobs() {
       const result = await Global.fetchJSON("/api/jobs/import", { method: "POST", body: formData });
       const parts = [`${result.created} new`, `${result.updated} updated`];
       if (result.skipped) parts.push(`${result.skipped} skipped`);
-      Global.showMessage(`Import complete: ${parts.join(", ")}.`, "success");
+      // Stays up until dismissed (see #import-result-banner in jobs.html) -
+      // Global.showMessage's usual 4s auto-hide isn't long enough to
+      // actually read/verify an import's created/updated/skipped counts.
+      showImportResultBanner(`Import complete: ${parts.join(", ")}.`, "success");
       loadJobs();
     } catch (err) {
-      Global.showMessage(err.message, "error");
+      showImportResultBanner(err.message, "error");
     } finally {
       e.target.value = "";
     }

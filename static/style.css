@@ -769,6 +769,30 @@ main {
   margin-bottom: 20px;
 }
 
+/* Unlike Global.showMessage's toasts (#page-message above, and every
+   fire-and-forget success/error confirmation elsewhere in this app), an
+   import result is worth actually reading - counts of created/updated/
+   skipped rows - so it stays up until dismissed by hand instead of
+   auto-hiding after 4s. Reuses the shared .page-message success/error
+   color classes, just with its own persistent markup on top. */
+#import-result-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#import-result-banner .banner-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
 #import-jobs-row .add-toggle.secondary {
   flex: 1;
   margin-bottom: 0;
