@@ -24,6 +24,13 @@
 <div id="app-nav-mount"></div>
 
     <div id="page-message" class="page-message hidden"></div>
+    <!-- Fixed/floating, unlike #page-message above - anything that toggles
+         #page-message pushes the job list down (or back up when it hides),
+         which reads as "the page jumped" if you're scrolled deep into a
+         long list. A resume just got generated for a card you're actively
+         looking at, so this needs to confirm success without moving
+         anything else on the page at all. -->
+    <div id="resume-toast" class="page-message hidden"></div>
 
     <button id="show-add-job" type="button" class="add-toggle">+ Add New Job Opportunity</button>
 

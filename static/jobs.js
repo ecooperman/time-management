@@ -1,4 +1,15 @@
 
+// Every backend timestamp (resume_generated_at, created_at, etc.) is
+// stored/serialized as naive UTC (datetime.utcnow(), no "Z" suffix) - same
+// convention as app.js's remind_at handling. A bare `new Date(naiveString)`
+// gets parsed as LOCAL time by the JS spec (no timezone designator present),
+// which silently mislabels a UTC timestamp as local and displays it offset
+// by the browser's UTC difference - appending "Z" first is the fix, in
+// both places.
+function parseNaiveUTC(naiveUTCString) {
+  return new Date(`${naiveUTCString}Z`);
+}
+
 function labeledInput(labelText, type, value) {
   const label = document.createElement("label");
   label.appendChild(document.createTextNode(labelText));
@@ -94,10 +105,12 @@ function resumeActionsBlock(job) {
     generateBtn.textContent = "Generating... (about a minute)";
     try {
       await Global.fetchJSON(`/api/jobs/${job.id}/generate-resume`, { method: "POST" });
-      Global.showMessage(`Generated a resume for "${job.name}".`, "success");
+      // Targets #resume-toast (fixed-position) rather than the default
+      // #page-message - see that element's comment in jobs.html for why.
+      Global.showMessage(`Generated a resume for "${job.name}".`, "success", "resume-toast");
       loadJobs();
     } catch (err) {
-      Global.showMessage(err.message, "error");
+      Global.showMessage(err.message, "error", "resume-toast");
       generateBtn.disabled = false;
       generateBtn.textContent = idleLabel;
     }
@@ -107,7 +120,7 @@ function resumeActionsBlock(job) {
   if (job.resume_generated_at) {
     const meta = document.createElement("p");
     meta.className = "job-admin-resume-meta";
-    meta.textContent = `Generated ${new Date(job.resume_generated_at).toLocaleString()}`;
+    meta.textContent = `Generated ${parseNaiveUTC(job.resume_generated_at).toLocaleString()}`;
     block.appendChild(meta);
 
     const resumeLabel = document.createElement("p");
@@ -188,7 +201,15 @@ function jobAdminCardElement(job) {
   const details = document.createElement("div");
   details.className = "item-details job-admin-details hidden";
 
-  Global.wireAccordionToggle(card, summary, details);
+  const toggle = Global.wireAccordionToggle(card, summary, details);
+  summary.addEventListener("click", () => {
+    if (card.classList.contains("expanded")) {
+      expandedJobIds.add(job.id);
+    } else {
+      expandedJobIds.delete(job.id);
+    }
+  });
+  if (expandedJobIds.has(job.id)) toggle();
 
   card.append(summary, details);
 
@@ -288,6 +309,14 @@ const TIER_RANK = { Strong: 0, Good: 1, Possible: 2, Weak: 3 };
 const DEFAULT_HIDDEN_TIERS = ["Possible", "Weak", "Unscored", "Unclear"];
 
 let allJobs = [];
+// Which job cards are currently expanded - renderJobList() rebuilds every
+// card from scratch on every refresh (loadJobs() after any action), and
+// without this they'd all silently re-collapse. That's what was actually
+// causing "the page jumps" after generating a resume: the card you had
+// open to read the JD/generate from collapses back down, the page's total
+// height shrinks, and your scroll position ends up looking at completely
+// different content even though scrollY itself didn't change.
+const expandedJobIds = new Set();
 let allPeople = [];
 
 function personById(id) {
@@ -460,9 +489,33 @@ function renderJobList() {
   }
 }
 
+function captureScrollAnchor() {
+  // The topmost job card still at least partly in view, and exactly how
+  // far down the viewport it currently sits - restoring relative to a
+  // specific job (not just the raw scrollY number) keeps you looking at
+  // the same job even if the rebuilt list's total height ends up slightly
+  // different for some unrelated reason (e.g. a sort-order shift).
+  for (const card of document.querySelectorAll("#job-rows [data-job-id]")) {
+    const rect = card.getBoundingClientRect();
+    if (rect.bottom > 0) {
+      return { jobId: card.dataset.jobId, viewportOffset: rect.top };
+    }
+  }
+  return null;
+}
+
+function restoreScrollAnchor(anchor) {
+  if (!anchor) return;
+  const card = document.querySelector(`#job-rows [data-job-id="${anchor.jobId}"]`);
+  if (!card) return;
+  window.scrollBy(0, card.getBoundingClientRect().top - anchor.viewportOffset);
+}
+
 async function loadJobs() {
+  const anchor = captureScrollAnchor();
   allJobs = await Global.fetchJSON("/api/jobs");
   renderJobList();
+  restoreScrollAnchor(anchor);
 }
 
 function initJobFilters() {

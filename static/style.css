@@ -769,6 +769,20 @@ main {
   margin-bottom: 20px;
 }
 
+/* Targeted by id, not class - Global.showMessage does
+   `el.className = "page-message " + kind` on every call, which wholesale-
+   replaces the class list and would otherwise wipe out a co-existing class
+   like ".toast-fixed" the instant a message actually shows. */
+#resume-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  max-width: 320px;
+  margin-bottom: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
 /* Unlike Global.showMessage's toasts (#page-message above, and every
    fire-and-forget success/error confirmation elsewhere in this app), an
    import result is worth actually reading - counts of created/updated/
