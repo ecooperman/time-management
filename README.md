@@ -34,9 +34,11 @@ error rather than crashing the app:
 | `RESUME_ADMIN_URL` | Finding the `resume` app's admin API | Optional - defaults to `http://127.0.0.1:8041`, correct for the shared droplet |
 
 Locally, export these in your shell before running the app. On the droplet,
-set them directly in `/etc/systemd/system/time-management.service` (never
+`ANTHROPIC_API_KEY` comes from the shared secrets file every app reads
+(`/etc/personal-apps/shared.env` - see `DEPLOYMENT.md`), and the other two
+are set directly in `/etc/systemd/system/time-management.service` (never
 commit real values - see `deploy/time-management.service` for the
-placeholder lines and `DEPLOYMENT.md`).
+placeholder lines).
 
 ### Environment variables (task reminder push notifications)
 
