@@ -1,5 +1,6 @@
 import asyncio
 import subprocess
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -39,7 +40,14 @@ def _get_git_sha() -> str:
 
 GIT_SHA = _get_git_sha()
 
-app = FastAPI(title="Time Management")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(run_reminder_loop())
+    yield
+
+
+app = FastAPI(title="Time Management", lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 
 
@@ -79,11 +87,6 @@ app.include_router(jobs.router)
 app.include_router(people.router)
 app.include_router(push.router)
 app.include_router(tasks.router)
-
-
-@app.on_event("startup")
-async def _start_reminder_loop():
-    asyncio.create_task(run_reminder_loop())
 
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
