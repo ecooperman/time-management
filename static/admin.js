@@ -52,8 +52,8 @@ function categoryRowElement(category) {
 }
 
 async function loadCategories() {
-  const categories = await Global.fetchJSON("/api/categories");
   const container = document.getElementById("category-rows");
+  const categories = await Global.withLoading(container, Global.fetchJSON("/api/categories"));
   container.innerHTML = "";
   for (const category of categories) {
     container.appendChild(categoryRowElement(category));
@@ -179,7 +179,7 @@ function personRowElement(person, resumePeople) {
 }
 
 async function loadPeople() {
-  const people = await Global.fetchJSON("/api/people");
+  const people = await Global.withLoading(document.getElementById("person-rows"), Global.fetchJSON("/api/people"));
 
   // The resume app owns every person and their resume content - this just
   // asks it who's available rather than storing/uploading anything

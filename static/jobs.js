@@ -513,7 +513,7 @@ function restoreScrollAnchor(anchor) {
 
 async function loadJobs() {
   const anchor = captureScrollAnchor();
-  allJobs = await Global.fetchJSON("/api/jobs");
+  allJobs = await Global.withLoading(document.getElementById("job-rows"), Global.fetchJSON("/api/jobs"));
   renderJobList();
   restoreScrollAnchor(anchor);
 }

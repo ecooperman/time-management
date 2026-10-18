@@ -382,7 +382,10 @@ async function loadAndRenderCalendar() {
   const days = getVisibleDays(currentView, anchorDate);
   const start = isoDateTime(days[0]);
   const end = isoDateTime(addDays(days[days.length - 1], 1));
-  const tasks = await Global.fetchJSON(`/api/tasks?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+  const tasks = await Global.withLoading(
+    document.getElementById("calendar"),
+    Global.fetchJSON(`/api/tasks?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`)
+  );
   renderGrid(days, bucketTasksByDate(tasks));
   updateNavTitle(days);
 }
@@ -402,7 +405,7 @@ function renderBacklog(tasks) {
 }
 
 async function refreshBacklog() {
-  const tasks = await Global.fetchJSON("/api/tasks/backlog");
+  const tasks = await Global.withLoading(document.getElementById("backlog-list"), Global.fetchJSON("/api/tasks/backlog"));
   renderBacklog(tasks);
 }
 
@@ -518,7 +521,7 @@ function renderJobs(jobsData) {
 }
 
 async function refreshJobs() {
-  const jobsData = await Global.fetchJSON("/api/jobs");
+  const jobsData = await Global.withLoading(document.getElementById("jobs-list"), Global.fetchJSON("/api/jobs"));
   renderJobs(jobsData);
 }
 
