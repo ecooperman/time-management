@@ -165,6 +165,12 @@ input, select, textarea {
   font-family: inherit;
 }
 
+/* The shared theme draws the dropdown chevron; the padding shorthand above
+   would otherwise reset the room it leaves for it on the right. */
+select {
+  padding-right: 34px;
+}
+
 button {
   cursor: pointer;
   border: 1px solid var(--border);
@@ -721,7 +727,8 @@ main {
 
 .person-resume-row select {
   font-size: 12px;
-  padding: 4px 6px;
+  padding: 4px 26px 4px 6px; /* right side leaves room for the dropdown chevron */
+  background-position: right 8px center;
   width: auto;
   margin-top: 0;
 }
@@ -825,7 +832,8 @@ main {
 #import-owner-select {
   width: auto;
   margin-top: 0;
-  padding: 4px 8px;
+  padding: 4px 28px 4px 8px; /* right side leaves room for the dropdown chevron */
+  background-position: right 9px center;
   font-size: 13px;
 }
 
@@ -969,7 +977,8 @@ main {
 #job-sort-select {
   width: auto;
   margin-top: 0;
-  padding: 4px 8px;
+  padding: 4px 28px 4px 8px; /* right side leaves room for the dropdown chevron */
+  background-position: right 9px center;
   font-size: 13px;
 }
 
