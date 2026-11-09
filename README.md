@@ -227,3 +227,8 @@ upgrade head`, and restarts the service. Needs these repo secrets set once
   with no build step. That split is intentional so the frontend can later be
   swapped for something richer (e.g. React, or a native iOS app) without
   touching the API.
+
+## To do
+
+The running to-do list for all projects is `../TODO.md` (in the personal-projects
+folder, one level up; not in git).
