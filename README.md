@@ -94,6 +94,18 @@ give it an explicit name (e.g. `'fk_tasks_job_id_jobs'`) in both `upgrade()`
 and `downgrade()` - SQLite's batch mode needs a name to reference, and will
 fail with `ValueError: Constraint must have a name` otherwise.
 
+## Tests
+
+```bash
+venv/bin/pip install -r requirements-dev.txt
+venv/bin/python -m pytest -q
+```
+
+They run against a throwaway SQLite file built by the real migrations (the app reads
+`DATABASE_URL`, which `tests/conftest.py` points at it), so your `tasks.db` is never touched.
+The same variable lets you try the app on a copy of your data:
+`DATABASE_URL=sqlite:////tmp/copy.db alembic upgrade head`, then start uvicorn with it set.
+
 ## Deploying
 
 Runs as a systemd service on the Digital Ocean droplet, reached through a
