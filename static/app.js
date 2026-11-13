@@ -418,6 +418,7 @@ function scheduleButton(dateKey, dayLabel, onClick) {
   btn.type = "button";
   btn.className = "schedule-btn";
   btn.textContent = `+ Add to ${dayLabel}`;
+  btn.dataset.btnIcon = "plus";
   btn.addEventListener("click", async (e) => {
     e.stopPropagation();
     btn.disabled = true;

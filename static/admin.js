@@ -15,6 +15,7 @@ function categoryRowElement(category) {
   const saveBtn = document.createElement("button");
   saveBtn.type = "button";
   saveBtn.textContent = "Save";
+  saveBtn.dataset.btnIcon = "check";
   saveBtn.addEventListener("click", async () => {
     try {
       await Global.fetchJSON(`/api/categories/${category.id}`, {
@@ -32,6 +33,7 @@ function categoryRowElement(category) {
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
   deleteBtn.textContent = "Delete";
+  deleteBtn.dataset.btnIcon = "trash";
   deleteBtn.className = "danger";
   deleteBtn.addEventListener("click", async () => {
     if (!confirm(`Delete category "${category.name}"?`)) return;
@@ -127,6 +129,7 @@ function personRowElement(person, resumePeople) {
   const saveBtn = document.createElement("button");
   saveBtn.type = "button";
   saveBtn.textContent = "Save";
+  saveBtn.dataset.btnIcon = "check";
   saveBtn.addEventListener("click", async () => {
     try {
       await Global.fetchJSON(`/api/people/${person.id}`, {
@@ -148,6 +151,7 @@ function personRowElement(person, resumePeople) {
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
   deleteBtn.textContent = "Delete";
+  deleteBtn.dataset.btnIcon = "trash";
   deleteBtn.className = "danger";
   deleteBtn.addEventListener("click", async () => {
     if (!confirm(`Delete "${person.name}"?`)) return;

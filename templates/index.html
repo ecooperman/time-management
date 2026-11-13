@@ -54,7 +54,7 @@
             Schedule for <span class="hint">(optional - leave blank for backlog)</span>
             <input type="date" id="task-schedule-date" />
           </label>
-          <button type="submit">Add task</button>
+          <button type="submit" data-btn-icon="plus">Add task</button>
         </form>
 
         <h2>Backlog <span class="hint">(drag onto a day)</span></h2>
@@ -77,9 +77,9 @@
           <button data-view="month">Month</button>
         </div>
         <div id="nav-controls">
-          <button id="nav-prev">&larr;</button>
+          <button id="nav-prev" data-btn-icon="arrow-left" aria-label="Previous">&larr;</button>
           <button id="nav-today">Today</button>
-          <button id="nav-next">&rarr;</button>
+          <button id="nav-next" data-btn-icon="arrow-right" aria-label="Next">&rarr;</button>
           <button type="button" id="nav-jump-btn" title="Jump to date" data-icon="calendar"></button>
           <span id="nav-title"></span>
         </div>
@@ -90,7 +90,7 @@
 
   <div id="task-modal" class="modal-overlay hidden">
     <div class="modal">
-      <button id="modal-close" class="modal-close">&times;</button>
+      <button id="modal-close" class="modal-close" data-btn-icon="x" aria-label="Close">&times;</button>
       <h2 id="modal-title"></h2>
 
       <label>
@@ -135,8 +135,8 @@
       <div id="modal-series-info" class="note hidden">
         Part of a recurring series.
         <div class="modal-actions">
-          <button type="button" id="modal-stop-recurrence" class="danger">Stop repeating from here</button>
-          <button type="button" id="modal-edit-series">Edit series</button>
+          <button type="button" id="modal-stop-recurrence" class="danger" data-btn-icon="repeat">Stop repeating from here</button>
+          <button type="button" id="modal-edit-series" data-btn-icon="edit">Edit series</button>
         </div>
       </div>
 
@@ -182,19 +182,19 @@
       </div>
 
       <div class="modal-actions">
-        <button id="modal-save">Save</button>
-        <button id="modal-mark-done">Mark done</button>
-        <button id="modal-reopen">Reopen</button>
-        <button id="modal-toggle-hold">Put on hold</button>
-        <button id="modal-to-backlog">Back to backlog</button>
-        <button id="modal-delete" class="danger">Delete</button>
+        <button id="modal-save" data-btn-icon="check">Save</button>
+        <button id="modal-mark-done" data-btn-icon="check">Mark done</button>
+        <button id="modal-reopen" data-btn-icon="undo">Reopen</button>
+        <button id="modal-toggle-hold" data-btn-icon="pause">Put on hold</button>
+        <button id="modal-to-backlog" data-btn-icon="inbox">Back to backlog</button>
+        <button id="modal-delete" class="danger" data-btn-icon="trash">Delete</button>
       </div>
     </div>
   </div>
 
   <div id="job-modal" class="modal-overlay hidden">
     <div class="modal">
-      <button id="job-modal-close" class="modal-close">&times;</button>
+      <button id="job-modal-close" class="modal-close" data-btn-icon="x" aria-label="Close">&times;</button>
       <h2>Edit job</h2>
 
       <label>
@@ -219,21 +219,21 @@
       </label>
 
       <div class="modal-actions">
-        <button id="job-modal-save">Save</button>
-        <button id="job-modal-delete" class="danger">Delete</button>
+        <button id="job-modal-save" data-btn-icon="check">Save</button>
+        <button id="job-modal-delete" class="danger" data-btn-icon="trash">Delete</button>
       </div>
     </div>
   </div>
 
   <div id="jump-modal" class="modal-overlay hidden">
     <div class="modal">
-      <button id="jump-modal-close" class="modal-close">&times;</button>
+      <button id="jump-modal-close" class="modal-close" data-btn-icon="x" aria-label="Close">&times;</button>
       <h2>Jump to date</h2>
 
       <div class="jump-modal-header">
-        <button type="button" id="jump-modal-prev">&larr;</button>
+        <button type="button" id="jump-modal-prev" data-btn-icon="arrow-left" aria-label="Previous">&larr;</button>
         <span id="jump-modal-title"></span>
-        <button type="button" id="jump-modal-next">&rarr;</button>
+        <button type="button" id="jump-modal-next" data-btn-icon="arrow-right" aria-label="Next">&rarr;</button>
       </div>
       <div class="jump-modal-weekdays">
         <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>

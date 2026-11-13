@@ -48,7 +48,7 @@
 
     <div id="import-result-banner" class="page-message hidden">
       <span id="import-result-text"></span>
-      <button type="button" id="import-result-close" class="banner-close" aria-label="Dismiss">&times;</button>
+      <button type="button" id="import-result-close" class="banner-close" aria-label="Dismiss" data-btn-icon="x">&times;</button>
     </div>
 
     <form id="add-job-form" class="item-card job-admin-card hidden">
@@ -77,8 +77,8 @@
         </label>
       </div>
       <div class="job-admin-actions">
-        <button type="submit">Add job</button>
-        <button type="button" id="cancel-add-job">Cancel</button>
+        <button type="submit" data-btn-icon="plus">Add job</button>
+        <button type="button" id="cancel-add-job" data-btn-icon="x">Cancel</button>
       </div>
     </form>
 
@@ -111,7 +111,7 @@
 
   <div id="bulk-resume-modal" class="modal-overlay hidden">
     <div class="modal" id="bulk-resume-modal-box">
-      <button id="bulk-resume-modal-close" class="modal-close">&times;</button>
+      <button id="bulk-resume-modal-close" class="modal-close" data-btn-icon="x" aria-label="Close">&times;</button>
       <h3>Generate resumes for these jobs?</h3>
       <p class="note" id="bulk-resume-modal-count"></p>
       <ul id="bulk-resume-job-list" class="bulk-resume-job-list"></ul>
@@ -121,8 +121,8 @@
         <ul id="bulk-resume-results" class="bulk-resume-results"></ul>
       </div>
       <div class="modal-actions">
-        <button id="bulk-resume-confirm" type="button">Generate</button>
-        <button id="bulk-resume-cancel" type="button">Cancel</button>
+        <button id="bulk-resume-confirm" type="button" data-btn-icon="zap">Generate</button>
+        <button id="bulk-resume-cancel" type="button" data-btn-icon="x">Cancel</button>
       </div>
     </div>
   </div>

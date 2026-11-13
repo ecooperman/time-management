@@ -78,6 +78,7 @@ function scoreDetailBlock(job) {
     toggle.type = "button";
     toggle.className = "job-admin-jd-toggle";
     toggle.textContent = "Show full job description";
+    toggle.dataset.btnIcon = "eye";
     const jdText = document.createElement("pre");
     jdText.className = "job-admin-jd-text hidden";
     jdText.textContent = job.jd_text;
@@ -98,6 +99,7 @@ function resumeActionsBlock(job) {
   const generateBtn = document.createElement("button");
   generateBtn.type = "button";
   generateBtn.className = "job-admin-resume-generate";
+  generateBtn.dataset.btnIcon = "zap";
   const idleLabel = job.resume_generated_at ? "Regenerate Resume + Cover Letter" : "Generate Resume + Cover Letter";
   generateBtn.textContent = idleLabel;
   generateBtn.addEventListener("click", async () => {
@@ -250,6 +252,7 @@ function jobAdminCardElement(job) {
   const saveBtn = document.createElement("button");
   saveBtn.type = "button";
   saveBtn.textContent = "Save";
+  saveBtn.dataset.btnIcon = "check";
   saveBtn.addEventListener("click", async () => {
     const nameVal = name.input.value.trim();
     const urlVal = url.input.value.trim();
@@ -281,6 +284,7 @@ function jobAdminCardElement(job) {
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
   deleteBtn.textContent = "Delete";
+  deleteBtn.dataset.btnIcon = "trash";
   deleteBtn.className = "danger";
   deleteBtn.addEventListener("click", async () => {
     if (!confirm(`Delete "${job.name}"?`)) return;
