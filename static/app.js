@@ -994,6 +994,9 @@ async function init() {
   initViewToggle();
   initNavControls();
   initModal();
+  // The new look keeps Save and Mark done / Reopen in view; hold, back to
+  // backlog and delete fold into a "..." menu (shared-assets' foldActions).
+  Global.foldActions(document.getElementById("modal-save").parentElement, { keep: "#modal-save, #modal-mark-done, #modal-reopen" });
   initAddTaskForm();
   initJobModal();
   initJumpModal();

@@ -12,7 +12,32 @@
   --applying-color: #C97B4A;
   --important: #c8960c;
   --important-bg: #fffaf0;
+  --today-bg: #fff3cd;
   --nav-height: 56px;
+
+  /* Job fit tiers: a tinted pill each, with a dark-mode set below. */
+  --tier-strong: #1d4ed8;
+  --tier-strong-bg: #dbeafe;
+  --tier-good: #0f766e;
+  --tier-good-bg: #ccfbf1;
+  --tier-possible: #92400e;
+  --tier-possible-bg: #fef3c7;
+  --tier-unclear: #6d28d9;
+  --tier-unclear-bg: #ede9fe;
+}
+
+:root[data-theme="dark"] {
+  --important: #e0b04a;
+  --important-bg: rgba(224, 176, 74, 0.1);
+  --today-bg: rgba(224, 176, 74, 0.16);
+  --tier-strong: #8fb0ee;
+  --tier-strong-bg: rgba(59, 130, 246, 0.2);
+  --tier-good: #5fd3c5;
+  --tier-good-bg: rgba(20, 184, 166, 0.18);
+  --tier-possible: #e6b865;
+  --tier-possible-bg: rgba(217, 119, 6, 0.2);
+  --tier-unclear: #b79cf5;
+  --tier-unclear-bg: rgba(139, 92, 246, 0.2);
 }
 
 .note {
@@ -53,7 +78,7 @@ body {
   width: 100%;
   min-width: 0;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 16px;
   order: 1;
@@ -174,7 +199,8 @@ select {
 button {
   cursor: pointer;
   border: 1px solid var(--border);
-  background: #fff;
+  color: var(--text);
+  background: var(--surface);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 13px;
@@ -182,8 +208,8 @@ button {
 
 #add-task-form button {
   width: 100%;
-  background: var(--text);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-text);
   border: none;
   padding: 8px;
   margin-top: 4px;
@@ -207,7 +233,7 @@ button {
   border-left: 4px solid var(--cat-color, #999);
   border-radius: 6px;
   padding: 6px 8px;
-  background: #fff;
+  background: var(--surface);
   cursor: grab;
   font-size: 13px;
   line-height: 1.3;
@@ -282,8 +308,8 @@ button {
   padding: 8px;
   font-size: 12px;
   font-weight: 600;
-  background: var(--text);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-text);
   border: none;
 }
 
@@ -302,7 +328,7 @@ button {
 }
 
 .sortable-chosen {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow);
 }
 
 /* This app's <main> is a flex sibling of #sidebar filling the remaining
@@ -357,8 +383,9 @@ main {
 }
 
 #view-toggle button.active {
-  background: var(--text);
-  color: #fff;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 #nav-controls {
@@ -514,7 +541,7 @@ main {
 .day-col {
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
@@ -527,7 +554,7 @@ main {
   font-weight: 600;
   text-align: center;
   border-bottom: 1px solid var(--border);
-  background: #f9fafb;
+  background: var(--muted-bg);
   flex-shrink: 0;
 }
 
@@ -540,7 +567,7 @@ main {
 }
 
 .day-col-header.today {
-  background: #fff3cd;
+  background: var(--today-bg);
 }
 
 .day-col.other-month .day-col-header {
@@ -592,7 +619,7 @@ main {
   font-size: 13px;
   margin-bottom: 12px;
   padding: 8px 10px;
-  background: #f9fafb;
+  background: var(--muted-bg);
   border-radius: 6px;
 }
 
@@ -601,7 +628,7 @@ main {
 }
 
 .linked-job .applied-badge {
-  color: #1e7a34;
+  color: var(--success);
   font-weight: 600;
 }
 
@@ -627,7 +654,7 @@ main {
   border-left: 4px solid var(--applying-color);
   border-radius: 6px;
   padding: 8px 10px;
-  background: #fff;
+  background: var(--surface);
   cursor: grab;
   font-size: 13px;
   line-height: 1.3;
@@ -650,7 +677,7 @@ main {
 .job-card .job-salary {
   font-size: 12px;
   font-weight: 600;
-  color: #1e7a34;
+  color: var(--success);
   margin-top: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -734,8 +761,8 @@ main {
 }
 
 .category-row button.danger {
-  color: #b3261e;
-  border-color: #b3261e;
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 .new-category-row {
@@ -764,7 +791,7 @@ main {
    has a secondary (outlined) variant for the CSV import / bulk-generate
    actions, which isn't used anywhere else yet. */
 .add-toggle.secondary {
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
 }
@@ -787,7 +814,7 @@ main {
   z-index: 1000;
   max-width: 320px;
   margin-bottom: 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow);
 }
 
 /* Unlike Global.showMessage's toasts (#page-message above, and every
@@ -846,18 +873,18 @@ main {
 }
 
 .tier-strong {
-  color: #1d4ed8;
-  background: #dbeafe;
+  color: var(--tier-strong);
+  background: var(--tier-strong-bg);
 }
 
 .tier-good {
-  color: #0f766e;
-  background: #ccfbf1;
+  color: var(--tier-good);
+  background: var(--tier-good-bg);
 }
 
 .tier-possible {
-  color: #92400e;
-  background: #fef3c7;
+  color: var(--tier-possible);
+  background: var(--tier-possible-bg);
 }
 
 .tier-weak {
@@ -867,13 +894,13 @@ main {
 
 .tier-unscored {
   color: var(--muted);
-  background: #fff;
+  background: var(--surface);
   border: 1px dashed var(--border);
 }
 
 .tier-unclear {
-  color: #6d28d9;
-  background: #ede9fe;
+  color: var(--tier-unclear);
+  background: var(--tier-unclear-bg);
 }
 
 #job-filter-bar {
@@ -909,8 +936,8 @@ main {
    border-less filter pill it was nearly invisible against the page
    background - give it its own higher-contrast treatment here. */
 .tier-filter-btn.tier-weak {
-  color: #374151;
-  background: #d7dce2;
+  color: var(--text);
+  background: var(--border-strong);
 }
 
 /* Owner filter pills + the matching tag on job cards. People have
@@ -930,7 +957,7 @@ main {
   align-items: center;
   gap: 5px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 10px;
   padding: 3px 10px 3px 8px;
   font-size: 12px;
@@ -996,7 +1023,7 @@ main {
 .job-admin-score-salary {
   font-size: 13px;
   font-weight: 600;
-  color: #1e7a34;
+  color: var(--success);
   margin: 0 0 8px;
 }
 
@@ -1055,13 +1082,13 @@ main {
   border: 1px solid var(--border);
   border-radius: 8px;
   margin-bottom: 10px;
-  background: #fff;
+  background: var(--surface);
   overflow: hidden;
 }
 
 .job-admin-card.applied {
-  background: #e6f4ea;
-  border-color: #b7dfc0;
+  background: var(--success-bg);
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border));
 }
 
 #add-job-form.job-admin-card {
@@ -1206,9 +1233,22 @@ main {
 }
 
 .bulk-resume-result-ok {
-  color: #1e7a34;
+  color: var(--success);
 }
 
 .bulk-resume-result-error {
-  color: #b3261e;
+  color: var(--danger);
+}
+
+/* --- the new look (pages with <html data-ui="v2">) ---
+   Between 640px and 900px the nav is a bar along the bottom of the screen
+   while the planner still fills the whole viewport: leave room for the bar. */
+@media (min-width: 640px) and (max-width: 899px) {
+  html[data-ui="v2"] #app {
+    height: calc(100vh - var(--nav-height));
+  }
+
+  html[data-ui="v2"] #app-version {
+    bottom: calc(var(--nav-height) + 4px);
+  }
 }
