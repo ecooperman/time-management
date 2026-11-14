@@ -760,11 +760,6 @@ main {
   margin-top: 0;
 }
 
-.category-row button.danger {
-  color: var(--danger);
-  border-color: var(--danger);
-}
-
 .new-category-row {
   margin-top: 20px;
   padding-top: 16px;

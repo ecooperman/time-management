@@ -285,7 +285,7 @@ function jobAdminCardElement(job) {
   deleteBtn.type = "button";
   deleteBtn.textContent = "Delete";
   deleteBtn.dataset.btnIcon = "trash";
-  deleteBtn.className = "danger";
+  deleteBtn.className = "danger-btn";
   deleteBtn.addEventListener("click", async () => {
     if (!confirm(`Delete "${job.name}"?`)) return;
     try {
@@ -701,7 +701,11 @@ function initBulkResumeGeneration() {
     for (const r of status.results) {
       const li = document.createElement("li");
       li.className = r.ok ? "bulk-resume-result-ok" : "bulk-resume-result-error";
-      li.textContent = r.ok ? `✓ ${r.name}` : `✗ ${r.name}: ${r.error}`;
+      const mark = document.createElement("span");
+      mark.className = "btn-icon";
+      mark.setAttribute("aria-hidden", "true");
+      mark.innerHTML = ICONS[r.ok ? "check" : "x"];
+      li.append(mark, r.ok ? ` ${r.name}` : ` ${r.name}: ${r.error}`);
       resultsEl.appendChild(li);
     }
 

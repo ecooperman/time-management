@@ -34,7 +34,7 @@ function categoryRowElement(category) {
   deleteBtn.type = "button";
   deleteBtn.textContent = "Delete";
   deleteBtn.dataset.btnIcon = "trash";
-  deleteBtn.className = "danger";
+  deleteBtn.className = "danger-btn";
   deleteBtn.addEventListener("click", async () => {
     if (!confirm(`Delete category "${category.name}"?`)) return;
     try {
@@ -152,7 +152,7 @@ function personRowElement(person, resumePeople) {
   deleteBtn.type = "button";
   deleteBtn.textContent = "Delete";
   deleteBtn.dataset.btnIcon = "trash";
-  deleteBtn.className = "danger";
+  deleteBtn.className = "danger-btn";
   deleteBtn.addEventListener("click", async () => {
     if (!confirm(`Delete "${person.name}"?`)) return;
     try {
