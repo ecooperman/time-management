@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from . import access
 from .config import SHARED_ASSETS_BASE
 from .database import SessionLocal
 from .reminders import run_reminder_loop
@@ -48,6 +49,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Time Management", lifespan=lifespan)
+access.install(app)  # the whole app is private to its administrators
 templates = Jinja2Templates(directory="templates")
 
 
