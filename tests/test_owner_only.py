@@ -119,3 +119,23 @@ def test_without_an_administrator_configured_in_production_nobody_gets_in(produc
 
 def test_locally_the_dev_user_is_the_administrator(client):
     assert client.get("/").status_code == 200 and client.get("/api/tasks").status_code == 200
+
+
+# --- who is signed in, for the menu's Log out entry ---------------------------------------------------------------------
+
+
+def test_me_says_who_is_signed_in_and_where_log_out_goes(production, key):
+    production.cookies.set("oidc_session", session(key, "Owner@Example.com"))
+    me = production.get("/api/me").json()
+    assert me == {"email": "owner@example.com", "is_admin": True, "logout_url": FRONT + "/auth/logout"}
+
+
+def test_me_is_refused_to_anyone_who_is_not_signed_in_or_not_an_administrator(production, key):
+    assert production.get("/api/me").status_code == 401
+    production.cookies.set("oidc_session", session(key, "stranger@example.com"))
+    assert production.get("/api/me").status_code == 403
+
+
+def test_locally_me_is_the_dev_user_with_no_front_door(client):
+    me = client.get("/api/me").json()
+    assert me["email"] == config.DEV_USER_EMAIL and me["logout_url"] is None

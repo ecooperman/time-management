@@ -11,12 +11,25 @@ function currentNavActive() {
 }
 
 const active = currentNavActive();
-Global.buildNav([
-  { href: "/", icon: "calendar", label: "Planner", active: active === "planner" },
-  { href: "/jobs.html", icon: "briefcase", label: "Jobs", active: active === "jobs" },
-  { href: "/admin.html", icon: "tag", label: "Settings", active: active === "settings" },
-  { icon: "refresh", label: "Refresh", onclick: () => location.reload() },
-]);
+
+// This app has no page header to carry the shared "signed in as ... Log out" corner, so Log out lives in the menu
+// (last, after Refresh). The menu is built straight away and rebuilt once we know who is signed in. The shared
+// code adds a Dashboard entry too. On a phone only the first three stay on the bar; the rest sit behind More.
+function buildTimeNav(me) {
+  const items = [
+    { href: "/", icon: "calendar", label: "Planner", active: active === "planner" },
+    { href: "/jobs.html", icon: "briefcase", label: "Jobs", active: active === "jobs" },
+    { href: "/admin.html", icon: "tag", label: "Settings", active: active === "settings" },
+    { icon: "refresh", label: "Refresh", onclick: () => location.reload() },
+  ];
+  if (me) items.push({ href: me.logout_url || "/cdn-cgi/access/logout", icon: "log-out", label: "Log out" });
+  Global.buildNav(items, "app-nav-mount", { barItems: 3 });
+}
+
+buildTimeNav(null);
+Global.currentUser().then((me) => {
+  if (me) buildTimeNav(me);
+});
 
 // Registered here (not per-page) so it's active no matter which page the
 // PWA happens to be opened to - see static/sw.js. Push notifications only
