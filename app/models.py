@@ -1,10 +1,27 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String
+from shared_python import owned
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from .database import Base
+
+USER_ACTIVE = "active"
+USER_REMOVED = "removed"
+
+
+class User(Base):
+    """A person with an account in this app. Accounts are made only by an administrator (default-deny: signing in is
+    not enough) or, for an administrator, on first sign-in. Everything below belongs to one User (owned.OwnedMixin),
+    and nobody can see or change another's rows."""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String, nullable=False, unique=True)
+    status = Column(String, nullable=False, default=USER_ACTIVE, server_default=USER_ACTIVE)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class TaskStatus(str, enum.Enum):
@@ -13,25 +30,27 @@ class TaskStatus(str, enum.Enum):
     on_hold = "on_hold"
 
 
-class Category(Base):
+class Category(Base, owned.OwnedMixin):
     __tablename__ = "categories"
+    __table_args__ = (UniqueConstraint("owner_id", "name", name="uq_categories_owner_id_name"),)
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=False)  # unique per person
     color = Column(String, nullable=False)
 
     tasks = relationship("Task", back_populates="category")
 
 
-class Person(Base):
-    """A household member jobs can be tagged with (e.g. you and your
-    spouse sharing this app). Purely a filter/label - nobody's data is
-    actually restricted by it, so there's no auth tied to this at all."""
+class Person(Base, owned.OwnedMixin):
+    """A label jobs can be tagged with (e.g. you and a partner whose job search you track together). Just a name and
+    colour to filter by: it is NOT an account and gives nobody access to anything. Each person with an account
+    keeps their own list of these."""
 
     __tablename__ = "people"
+    __table_args__ = (UniqueConstraint("owner_id", "name", name="uq_people_owner_id_name"),)
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=False)  # unique per account
     color = Column(String, nullable=False)
     # The resume app's own Person.slug (see that app's app/models.py) that
     # resume generation should tailor for this person's jobs - e.g. "rach".
@@ -40,10 +59,10 @@ class Person(Base):
     # second household member needs to set this. See app/resume_gen.py.
     resume_person_slug = Column(String, nullable=True)
 
-    jobs = relationship("Job", back_populates="owner")
+    jobs = relationship("Job", back_populates="person")
 
 
-class Job(Base):
+class Job(Base, owned.OwnedMixin):
     __tablename__ = "jobs"
 
     id = Column(Integer, primary_key=True)
@@ -53,10 +72,10 @@ class Job(Base):
     company_url = Column(String, nullable=True)
     applied = Column(Boolean, nullable=False, default=False)
 
-    # Who this job belongs to (see Person above). Nullable - jobs imported
-    # before this feature existed, or added without picking anyone, are
-    # simply unowned rather than defaulted to a guess.
-    owner_id = Column(Integer, ForeignKey("people.id"), nullable=True)
+    # Which Person label this job is tagged with (see Person above; not the account that owns the job, that is
+    # owner_id from OwnedMixin). Nullable - jobs imported before this feature existed, or added without picking
+    # anyone, are simply untagged rather than defaulted to a guess.
+    person_id = Column(Integer, ForeignKey("people.id"), nullable=True)
 
     # Populated by bulk CSV import from the job-scoring Chrome extension;
     # null for jobs entered by hand. Re-importing a URL that's already here
@@ -83,10 +102,10 @@ class Job(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     tasks = relationship("Task", back_populates="job")
-    owner = relationship("Person", back_populates="jobs")
+    person = relationship("Person", back_populates="jobs")
 
 
-class Task(Base):
+class Task(Base, owned.OwnedMixin):
     __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True)
@@ -148,11 +167,9 @@ class Task(Base):
     job = relationship("Job", back_populates="tasks")
 
 
-class PushSubscription(Base):
-    """One row per subscribed browser/device (Web Push - see app/push.py).
-    Flat list, no owner/person linkage - every subscribed device gets
-    every reminder, by explicit choice (this app doesn't have per-task
-    ownership the way Job does, and there was no request to add it)."""
+class PushSubscription(Base, owned.OwnedMixin):
+    """One row per subscribed browser/device (Web Push - see app/push.py). A device belongs to ONE account (the one that
+    registered it), and only that account's reminders are sent to it."""
 
     __tablename__ = "push_subscriptions"
 

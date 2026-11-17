@@ -52,8 +52,9 @@ def _vapid_private_key() -> Vapid02:
     return Vapid02.from_raw(config.VAPID_PRIVATE_KEY.encode())
 
 
-def send_push_to_all(db: Session, title: str, body: str, url: str = "/", task_id: int = None) -> None:
-    """Sends one push message to every subscribed device. A subscription
+def send_push(db: Session, title: str, body: str, url: str = "/", task_id: int = None) -> None:
+    """Sends one push message to every device the person in scope subscribed (never anyone else's: the subscriptions
+    list is filtered to them like everything else). A subscription
     that comes back 404/410 (Gone) means the browser dropped it - the
     user uninstalled the PWA, cleared data, or revoked permission - so we
     delete it rather than let it fail forever on every future send.

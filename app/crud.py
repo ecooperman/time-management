@@ -1,10 +1,28 @@
 from datetime import date, datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import func
+from shared_python import owned
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import models, schemas
+from .database import SessionLocal
+from .seed import seed_categories
+
+
+class BadReference(Exception):
+    """A request named a category, job or person that is not the signed-in person's (it does not exist for them, or it
+    is someone else's: they look exactly the same, on purpose). The routers answer 400."""
+
+
+class DeviceInUse(Exception):
+    """The push endpoint is already registered to another account. The routers answer 409."""
+
+
+def _must_have(db: Session, model, row_id, what: str) -> None:
+    """The signed-in person must own row `row_id` of `model` (the data layer only shows them their own rows)."""
+    if row_id is not None and db.query(select(model.id).where(model.id == row_id).exists()).scalar() is not True:
+        raise BadReference(f"That {what} doesn't exist")
 
 
 def apply_rollover(db: Session) -> None:
@@ -113,7 +131,7 @@ def delete_person(db: Session, person_id: int) -> str:
     db_person = get_person(db, person_id)
     if db_person is None:
         return "not_found"
-    job_count = db.query(models.Job).filter(models.Job.owner_id == person_id).count()
+    job_count = db.query(models.Job).filter(models.Job.person_id == person_id).count()
     if job_count > 0:
         return "in_use"
     db.delete(db_person)
@@ -126,6 +144,7 @@ def get_jobs(db: Session):
 
 
 def create_job(db: Session, job: schemas.JobCreate):
+    _must_have(db, models.Person, job.person_id, "person")
     db_job = models.Job(**job.model_dump())
     db.add(db_job)
     db.commit()
@@ -145,25 +164,28 @@ def update_job(db: Session, job_id: int, updates: schemas.JobUpdate):
     db_job = get_job(db, job_id)
     if db_job is None:
         return None
-    for field, value in updates.model_dump(exclude_unset=True).items():
+    data = updates.model_dump(exclude_unset=True)
+    _must_have(db, models.Person, data.get("person_id"), "person")
+    for field, value in data.items():
         setattr(db_job, field, value)
     db.commit()
     db.refresh(db_job)
     return db_job
 
 
-def import_jobs_from_csv(db: Session, rows: list, owner_id: Optional[int] = None) -> schemas.JobImportResult:
+def import_jobs_from_csv(db: Session, rows: list, person_id: Optional[int] = None) -> schemas.JobImportResult:
     """Bulk-upsert jobs from a scored-jobs CSV export (the job-scoring
     Chrome extension). Matches existing jobs by url: if found, refreshes
     only the scoring fields (tier/summary/matched/gaps/strengths/scored_at/
     jd_text) - applied and everything else stay exactly as they were, since
-    re-scoring shouldn't touch your tracked application progress. owner_id
-    is set on newly-created jobs, and backfilled onto existing jobs that
-    don't have one yet (e.g. jobs imported before this feature existed) -
-    but never overwrites a job that's already got an owner, so a later
-    re-import can't silently reassign whose job it is. Rows missing a url
-    or title are skipped.
+    re-scoring shouldn't touch your tracked application progress. person_id
+    (the Person label) is set on newly-created jobs, and backfilled onto
+    existing jobs that don't have one yet (e.g. jobs imported before this
+    feature existed) - but never overwrites a job that's already tagged, so
+    a later re-import can't silently retag whose job it is. Rows missing a
+    url or title are skipped.
     """
+    _must_have(db, models.Person, person_id, "person")
     created = updated = skipped = 0
     for row in rows:
         url = (row.get("url") or "").strip()
@@ -194,13 +216,13 @@ def import_jobs_from_csv(db: Session, rows: list, owner_id: Optional[int] = None
         if existing:
             for field, value in score_data.items():
                 setattr(existing, field, value)
-            # Fill in the owner if it's not already set (e.g. a job that
-            # predates this feature, or was imported with "No owner"), but
+            # Fill in the tag if it's not already set (e.g. a job that
+            # predates this feature, or was imported with no one picked), but
             # never overwrite one that's already assigned - if two people's
             # CSVs ever both contain the same URL, whoever's already tagged
             # it keeps it rather than a later re-import silently stealing it.
-            if owner_id is not None and existing.owner_id is None:
-                existing.owner_id = owner_id
+            if person_id is not None and existing.person_id is None:
+                existing.person_id = person_id
             updated += 1
         else:
             title = (row.get("title") or "").strip()
@@ -212,7 +234,7 @@ def import_jobs_from_csv(db: Session, rows: list, owner_id: Optional[int] = None
                     name=title,
                     url=url,
                     company=(row.get("company") or "").strip() or None,
-                    owner_id=owner_id,
+                    person_id=person_id,
                     **score_data,
                 )
             )
@@ -235,6 +257,9 @@ def delete_job(db: Session, job_id: int) -> str:
     return "deleted"
 
 
+MAX_DAYS_AHEAD = 800  # about two years
+
+
 def materialize_recurring(db: Session, start: Optional[datetime], end: Optional[datetime]) -> None:
     """Lazily backfill missing daily occurrences for any recurring series.
 
@@ -246,6 +271,9 @@ def materialize_recurring(db: Session, start: Optional[datetime], end: Optional[
     if end is None:
         return
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    # Never fill in further ahead than a calendar could sensibly show: otherwise anyone could ask for a range reaching
+    # the year 2100 and have a row made for every day of every recurring task they own.
+    end = min(end, today + timedelta(days=MAX_DAYS_AHEAD))
     range_start = max(start, today) if start is not None else today
     if range_start >= end:
         return
@@ -378,6 +406,8 @@ def get_backlog(db: Session):
 
 
 def create_task(db: Session, task: schemas.TaskCreate):
+    _must_have(db, models.Category, task.category_id, "category")
+    _must_have(db, models.Job, task.job_id, "job")
     max_order = db.query(func.max(models.Task.sort_order)).scalar() or 0
     db_task = models.Task(**task.model_dump(), sort_order=max_order + 10)
     db.add(db_task)
@@ -396,6 +426,10 @@ def update_task(db: Session, task_id: int, updates: schemas.TaskUpdate):
         return None
 
     data = updates.model_dump(exclude_unset=True)
+    if "category_id" in data and data["category_id"] is None:
+        raise BadReference("A task needs a category")
+    _must_have(db, models.Category, data.get("category_id"), "category")
+    _must_have(db, models.Job, data.get("job_id"), "job")
     was_done = db_task.status == models.TaskStatus.done
     becoming_done = data.get("status") == models.TaskStatus.done
 
@@ -500,7 +534,19 @@ def upsert_push_subscription(db: Session, subscription: schemas.PushSubscription
     """Keyed by endpoint (the browser assigns a fresh one per subscribe
     call, but re-subscribing the same device can still land on the same
     endpoint) - re-subscribing just refreshes the keys rather than making
-    a duplicate row."""
+    a duplicate row.
+
+    A device belongs to ONE account's reminders and is never taken over: if this endpoint is already registered to
+    someone else (a phone or browser two people share) the request is refused. Turning reminders off in the browser
+    and on again gives the device a fresh endpoint that can then be registered to the new account."""
+    me = owned.current_owner()
+    with owned.unscoped(), SessionLocal() as other:  # a separate session: never mix unscoped and scoped work in one
+        taken = other.query(models.PushSubscription).filter(
+            models.PushSubscription.endpoint == subscription.endpoint, models.PushSubscription.owner_id != me
+        ).first()
+    if taken is not None:
+        raise DeviceInUse("This device is already set up for someone else's reminders. Turn reminders off on this "
+                          "device and on again to use it for yours.")
     existing = db.query(models.PushSubscription).filter(
         models.PushSubscription.endpoint == subscription.endpoint
     ).first()
@@ -528,3 +574,86 @@ def delete_push_subscription_by_endpoint(db: Session, endpoint: str) -> bool:
 
 def get_push_subscriptions(db: Session):
     return db.query(models.PushSubscription).all()
+
+
+# --- accounts ---------------------------------------------------------------------------------------------------------
+# The users table is not an owned table (it is how ownership is decided), so these are the only queries that run
+# without a person in scope, apart from seeding a new account's default categories (inside THEIR scope).
+
+LEGACY_OWNER_EMAIL = "legacy-owner@time.invalid"
+
+
+def normalize_email(raw: str) -> str:
+    return (raw or "").strip().lower()
+
+
+def get_user_by_email(db: Session, email: str):
+    return db.query(models.User).filter(models.User.email == normalize_email(email)).first()
+
+
+def get_user(db: Session, user_id: int):
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+
+def list_users(db: Session):
+    return db.query(models.User).filter(models.User.email != LEGACY_OWNER_EMAIL).order_by(func.lower(models.User.email)).all()
+
+
+def _seed_new_account(db: Session, user) -> None:
+    with owned.scope(user.id):
+        seed_categories(db)
+
+
+def adopt_or_create_admin(db: Session, email: str):
+    """An administrator's account, made the first time they sign in. If the data that existed before accounts is
+    still parked on the placeholder, they take it over by giving it their email: it all becomes theirs without a
+    single row moving."""
+    email = normalize_email(email)
+    existing = get_user_by_email(db, email)
+    if existing is not None:
+        return existing
+    legacy = db.query(models.User).filter(models.User.email == LEGACY_OWNER_EMAIL).first()
+    if legacy is not None:
+        legacy.email = email
+        user = legacy
+        db.commit()
+    else:
+        user = models.User(email=email)
+        db.add(user)
+        db.commit()
+        _seed_new_account(db, user)
+    return user
+
+
+def add_user(db: Session, email: str):
+    """Let someone in (an administrator's decision). Returns (user, changed): a person whose access was removed is
+    restored, and someone who already has access is left as they are."""
+    email = normalize_email(email)
+    user = get_user_by_email(db, email)
+    if user is not None:
+        restored = user.status != models.USER_ACTIVE
+        user.status = models.USER_ACTIVE
+        db.commit()
+        return user, restored
+    user = models.User(email=email)
+    db.add(user)
+    db.commit()
+    _seed_new_account(db, user)
+    return user, True
+
+
+def set_user_status(db: Session, user, status: str):
+    user.status = status
+    db.commit()
+    return user
+
+
+def delete_user_data(db: Session, user_id: int) -> dict:
+    """Permanently delete everything a person owns. Runs inside THEIR scope (never anyone else's), children first."""
+    counts = {}
+    with owned.scope(user_id):
+        for key, model in (("tasks", models.Task), ("reminder_devices", models.PushSubscription), ("jobs", models.Job),
+                           ("people", models.Person), ("categories", models.Category)):
+            counts[key] = db.query(model).delete(synchronize_session=False)
+        db.commit()
+    return counts

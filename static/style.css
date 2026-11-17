@@ -1247,3 +1247,15 @@ main {
     bottom: calc(var(--nav-height) + 4px);
   }
 }
+
+/* Users page: the add-someone row. */
+.member-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.member-add input {
+  flex: 1;
+  min-width: 0;
+}

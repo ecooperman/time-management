@@ -7,6 +7,7 @@ function currentNavActive() {
   const path = window.location.pathname;
   if (path === "/jobs.html") return "jobs";
   if (path === "/admin.html") return "settings";
+  if (path === "/users.html") return "users";
   return "planner";
 }
 
@@ -22,6 +23,8 @@ function buildTimeNav(me) {
     { href: "/admin.html", icon: "tag", label: "Settings", active: active === "settings" },
     { icon: "refresh", label: "Refresh", onclick: () => location.reload() },
   ];
+  // Only administrators can let people in.
+  if (me && me.is_admin) items.splice(3, 0, { href: "/users.html", icon: "users", label: "Users", active: active === "users" });
   if (me) items.push({ href: me.logout_url || "/cdn-cgi/access/logout", icon: "log-out", label: "Log out" });
   Global.buildNav(items, "app-nav-mount", { barItems: 3 });
 }

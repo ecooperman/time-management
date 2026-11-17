@@ -92,9 +92,14 @@ function scoreDetailBlock(job) {
   return block;
 }
 
+// Resume generation acts as the administrator (their resume data, their Anthropic key), so the server only allows it
+// for an administrator and the controls are only shown to one. Set from /api/me before anything is drawn (see the end).
+let canGenerateResumes = false;
+
 function resumeActionsBlock(job) {
   const block = document.createElement("div");
   block.className = "job-admin-resume";
+  if (!canGenerateResumes) return block;
 
   const generateBtn = document.createElement("button");
   generateBtn.type = "button";
@@ -232,7 +237,7 @@ function jobAdminCardElement(job) {
   ownerLabel.appendChild(document.createTextNode("Owner"));
   const ownerSelect = document.createElement("select");
   populatePersonSelect(ownerSelect, "No owner");
-  ownerSelect.value = job.owner_id != null ? String(job.owner_id) : "";
+  ownerSelect.value = job.person_id != null ? String(job.person_id) : "";
   ownerLabel.appendChild(ownerSelect);
 
   fields.append(name.label, company.label, url.label, companyUrl.label, ownerLabel);
@@ -269,7 +274,7 @@ function jobAdminCardElement(job) {
           url: urlVal,
           company: company.input.value.trim() || null,
           company_url: companyUrl.input.value.trim() || null,
-          owner_id: ownerSelect.value ? Number(ownerSelect.value) : null,
+          person_id: ownerSelect.value ? Number(ownerSelect.value) : null,
           applied: appliedInput.checked,
         }),
       });
@@ -361,12 +366,12 @@ async function loadPeople() {
 
 // Unlike tiers, owners are a dynamic, user-managed list (see admin.html) -
 // the filter buttons for them can't be static HTML, they're built here once
-// people are loaded. "Unassigned" stands in for jobs with no owner_id, same
+// people are loaded. "Unassigned" stands in for jobs with no person_id, same
 // idea as tiers' "Unscored".
 const UNASSIGNED_OWNER_KEY = "unassigned";
 
 function jobOwnerKey(job) {
-  return job.owner_id != null ? String(job.owner_id) : UNASSIGNED_OWNER_KEY;
+  return job.person_id != null ? String(job.person_id) : UNASSIGNED_OWNER_KEY;
 }
 
 function renderOwnerFilterButtons() {
@@ -405,7 +410,7 @@ function renderOwnerFilterButtons() {
 }
 
 function ownerTag(job) {
-  const person = job.owner_id != null ? personById(job.owner_id) : null;
+  const person = job.person_id != null ? personById(job.person_id) : null;
   if (!person) return null;
   const tag = document.createElement("span");
   tag.className = "owner-tag";
@@ -581,7 +586,7 @@ function initAddJobForm() {
           url,
           company: company || null,
           company_url: companyUrl || null,
-          owner_id: ownerId ? Number(ownerId) : null,
+          person_id: ownerId ? Number(ownerId) : null,
         }),
       });
       form.reset();
@@ -613,7 +618,7 @@ function initImportJobs() {
     localStorage.setItem("jobImportOwnerId", ownerId);
     const formData = new FormData();
     formData.append("file", file);
-    if (ownerId) formData.append("owner_id", ownerId);
+    if (ownerId) formData.append("person_id", ownerId);
     try {
       // No Content-Type header here on purpose - the browser sets the
       // multipart boundary itself from the FormData body; setting it
@@ -739,9 +744,16 @@ function initBulkResumeGeneration() {
   });
 }
 
-initAddJobForm();
-initImportJobs();
-initJobFilters();
-initBulkResumeGeneration();
-loadPeople();
-loadJobs();
+async function start() {
+  const me = await Global.currentUser();
+  canGenerateResumes = !!(me && me.can_use && me.can_use.resume);
+  if (!canGenerateResumes) document.getElementById("bulk-generate-btn").classList.add("hidden");
+  initAddJobForm();
+  initImportJobs();
+  initJobFilters();
+  initBulkResumeGeneration();
+  loadPeople();
+  loadJobs();
+}
+
+start();

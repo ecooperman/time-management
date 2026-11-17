@@ -21,6 +21,28 @@ upgrade head` creates it (and the three default categories get seeded in on
 first app startup). This only needs to be run once for a fresh install; see
 below for how schema changes are handled from here on.
 
+## Accounts and privacy
+
+Several people can use the app, and **everyone's tasks, jobs, categories, people labels and reminder devices are
+completely private to them.** It signs in through the shared front door (the dashboard) and is default-deny: signing
+in is not enough, a person needs an account here. Only administrators (`ADMIN_EMAILS`) can create accounts, from the
+**Users** page (also remove, restore, or delete a removed person's data); an administrator's own account is made on their
+first sign-in, and they take over the data that existed before accounts (it was parked on a placeholder user by the
+migration).
+
+How it is enforced, so a forgotten check in one route cannot leak: `shared_python.accounts_gate` wraps the whole app and
+runs every request inside the signed-in person's scope, and `shared_python.owned` filters every database read and write
+to that person below the app's own code (and refuses a row that points at another person's row). `app/access.py` and
+`tests/test_accounts.py` (a second person calls every route against the first person's data) are the places to look.
+Anything new that holds a person's data must inherit `owned.OwnedMixin` (a test fails otherwise) and must not use raw SQL.
+
+Resume generation acts as the administrator (their resume data, their Anthropic key), so it, its downloads, and the
+resume app's list of people are **administrator-only**; everyone else just doesn't see those controls. Reminders are sent
+per person, only to that person's own devices; a device registered to one account is never taken over by another
+(turn reminders off in the browser and on again to move a shared device).
+
+The "people" on the Settings page are only labels for filtering jobs (jobs are tagged with `person_id`); they are not accounts.
+
 ### Environment variables (resume generation)
 
 The "Generate Resume" feature on the Jobs page (see the Notes section below)
@@ -143,7 +165,7 @@ upgrade head`, and restarts the service. Needs these repo secrets set once
   calendar to place them on a day.
 - Categories (name/color) are managed from the "Manage categories" link in
   the sidebar, which opens `/admin.html`. A category can't be deleted while
-  any task still references it.
+  any task still references it. Everyone starts with the three defaults.
 - `due_date` and `scheduled_date` are stored as separate columns, but for now
   both are set together whenever a task is placed on the calendar - there's
   no UI yet to make them diverge.

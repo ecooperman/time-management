@@ -12,9 +12,13 @@ PORT = 8010
 ENV = os.environ.get("APP_ENV", "local")
 SHARED_ASSETS_BASE = "https://static.evancooperman.com" if ENV == "production" else "http://127.0.0.1:8070"
 
-# Who is signed in (shared_python): the whole app is private to its administrators, so everyone else is refused
-# (see app/access.py). ADMIN_EMAILS (comma-separated) comes from the shared secrets file on the droplet; locally
-# the dev user is one, and is who every request is treated as.
+# Where this app lives, for the links in the emails that tell people they have been let in.
+PUBLIC_URL = "https://time.evancooperman.com" if ENV == "production" else f"http://{HOST}:{PORT}"
+
+# Who is signed in (shared_python): only people with an account get in, each into their own private data (see
+# app/access.py). ADMIN_EMAILS (comma-separated) comes from the shared secrets file on the droplet: they always have an
+# account and are the only ones who can let others in or use resume generation. Locally the dev user is one, and is
+# who every request is treated as.
 DEV_USER_EMAIL = os.environ.get("DEV_USER_EMAIL", "dev@localhost.test").strip().lower()
 ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 if ENV != "production":

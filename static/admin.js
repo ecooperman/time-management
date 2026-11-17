@@ -82,7 +82,9 @@ function initAddForm() {
   });
 }
 
-function personRowElement(person, resumePeople) {
+// canPickResume: which resume a person's jobs are tailored from is an administrator's choice (resume generation acts as
+// the administrator), so everyone else just gets name and colour.
+function personRowElement(person, resumePeople, canPickResume) {
   const wrap = document.createElement("div");
   wrap.className = "person-row-wrap";
   wrap.dataset.personId = person.id;
@@ -135,11 +137,11 @@ function personRowElement(person, resumePeople) {
       await Global.fetchJSON(`/api/people/${person.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: nameInput.value,
-          color: colorInput.value,
-          resume_person_slug: resumeSelect.value || null,
-        }),
+        body: JSON.stringify(
+          canPickResume
+            ? { name: nameInput.value, color: colorInput.value, resume_person_slug: resumeSelect.value || null }
+            : { name: nameInput.value, color: colorInput.value }
+        ),
       });
       Global.showMessage(`Saved "${nameInput.value}".`, "success");
       loadPeople();
@@ -178,7 +180,7 @@ function personRowElement(person, resumePeople) {
   resumeRow.appendChild(resumeSelect);
 
   wrap.appendChild(row);
-  wrap.appendChild(resumeRow);
+  if (canPickResume) wrap.appendChild(resumeRow);
   return wrap;
 }
 
@@ -190,18 +192,22 @@ async function loadPeople() {
   // resume-related here. Degrades gracefully (empty list, not a
   // page-breaking error) if the resume app happens to be unreachable when
   // Settings loads.
+  const me = await Global.currentUser();
+  const canPickResume = !!(me && me.can_use && me.can_use.resume);
   let resumePeople = [];
-  try {
-    const data = await Global.fetchJSON("/api/people/resume-people");
-    resumePeople = data.people;
-  } catch (err) {
-    Global.showMessage(`Couldn't load people from the resume app: ${err.message}`, "error");
+  if (canPickResume) {
+    try {
+      const data = await Global.fetchJSON("/api/people/resume-people");
+      resumePeople = data.people;
+    } catch (err) {
+      Global.showMessage(`Couldn't load people from the resume app: ${err.message}`, "error");
+    }
   }
 
   const container = document.getElementById("person-rows");
   container.innerHTML = "";
   for (const person of people) {
-    container.appendChild(personRowElement(person, resumePeople));
+    container.appendChild(personRowElement(person, resumePeople, canPickResume));
   }
 }
 

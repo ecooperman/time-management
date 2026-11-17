@@ -3,26 +3,22 @@ import subprocess
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from shared_python import auth, oidc_login
+from shared_python import accounts_gate, oidc_login, owned
 
-from . import access, config
+from . import access, config, crud, schemas
 from .config import SHARED_ASSETS_BASE
-from .database import SessionLocal
 from .reminders import run_reminder_loop
-from .routers import categories, jobs, people, push, tasks
-from .seed import seed_categories
+from .routers import categories, jobs, people, push, tasks, users
 
 # Schema is owned by Alembic migrations (see migrations/) - run
 # `alembic upgrade head` before starting the app rather than relying on
-# create_all, so schema changes never silently bypass migrations.
-
-with SessionLocal() as db:
-    seed_categories(db)
+# create_all, so schema changes never silently bypass migrations. (A new
+# account's default categories are made when the account is, see crud.py.)
 
 
 def _get_git_sha() -> str:
@@ -51,7 +47,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Time Management", lifespan=lifespan)
-access.install(app)  # the whole app is private to its administrators
+access.install(app)  # only people with an account get in, each inside their own private data (app/access.py)
 templates = Jinja2Templates(directory="templates")
 
 
@@ -60,12 +56,33 @@ def get_version():
     return {"version": GIT_SHA}
 
 
-@app.get("/api/me")
-def get_me(request: Request):
-    """Who is signed in, for the menu's Log out entry (the shared Global.currentUser reads this). The whole app is
-    already private to its administrators (app/access.py), so whoever gets here is one."""
-    email = auth.request_email(request, config.DEV_USER_EMAIL).strip().lower()
-    return {"email": email, "is_admin": True, "logout_url": oidc_login.logout_url(request)}
+@app.exception_handler(crud.BadReference)
+def _bad_reference(request: Request, exc: crud.BadReference):
+    return JSONResponse({"detail": str(exc)}, status_code=400, headers={"Cache-Control": "no-store"})
+
+
+@app.exception_handler(crud.DeviceInUse)
+def _device_in_use(request: Request, exc: crud.DeviceInUse):
+    return JSONResponse({"detail": str(exc)}, status_code=409, headers={"Cache-Control": "no-store"})
+
+
+@app.exception_handler(owned.WrongOwner)
+def _wrong_owner(request: Request, exc: owned.WrongOwner):
+    """The data layer's last line of defence refused a write that touched someone else's data."""
+    return JSONResponse({"detail": "That isn't yours to change"}, status_code=403, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/me", response_model=schemas.Me)
+def get_me(request: Request, account=Depends(accounts_gate.current_account)):
+    """Who is signed in, for the menu's Log out entry and for hiding what only an administrator may use (the shared
+    Global.currentUser reads this)."""
+    return schemas.Me(
+        id=account.id,
+        email=account.email,
+        is_admin=account.is_admin,
+        can_use={"resume": account.is_admin},
+        logout_url=oidc_login.logout_url(request),
+    )
 
 
 # shared_assets_base baked in server-side (no client-side fetch, no flash
@@ -81,6 +98,7 @@ def _render(name: str):
 app.get("/", response_class=HTMLResponse)(_render("index.html"))
 app.get("/jobs.html", response_class=HTMLResponse)(_render("jobs.html"))
 app.get("/admin.html", response_class=HTMLResponse)(_render("admin.html"))
+app.get("/users.html", response_class=HTMLResponse)(_render("users.html"))
 
 
 @app.middleware("http")
@@ -99,6 +117,7 @@ app.include_router(jobs.router)
 app.include_router(people.router)
 app.include_router(push.router)
 app.include_router(tasks.router)
+app.include_router(users.router)
 
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

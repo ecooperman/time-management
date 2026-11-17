@@ -10,6 +10,7 @@ most CHECK_INTERVAL_SECONDS of delay on a reminder, which is fine for this.
 import asyncio
 from datetime import datetime, timedelta
 
+from shared_python import owned
 from sqlalchemy.orm import Session
 
 from . import models, push
@@ -33,6 +34,8 @@ def _is_due(task: models.Task, now: datetime) -> bool:
 
 
 def check_due_reminders(db: Session) -> None:
+    """One person's due reminders: call inside owned.scope(their id), so only their tasks are looked at and only
+    their devices are pushed to."""
     now = datetime.utcnow()
     candidates = (
         db.query(models.Task)
@@ -56,17 +59,30 @@ def check_due_reminders(db: Session) -> None:
         # (see static/sw.js), a tap opening directly to the modal is the
         # best iOS can actually do: one tap to notification, one to Mark
         # done, instead of a plain tap landing on the unrelated day view.
-        push.send_push_to_all(db, title=task.title, body=body, url=f"/?task={task.id}", task_id=task.id)
+        push.send_push(db, title=task.title, body=body, url=f"/?task={task.id}", task_id=task.id)
         task.remind_count_sent += 1
         task.last_reminded_at = now
     db.commit()
 
 
+def check_everyones_reminders() -> None:
+    """Each person with access, in turn and inside their own scope, so one person's reminder can never be sent for
+    (or to the devices of) another. A person whose access was removed gets none."""
+    with owned.unscoped(), SessionLocal() as db:  # only the list of whose turn it is
+        people = [u.id for u in db.query(models.User).filter(models.User.status == models.USER_ACTIVE).all()]
+    for user_id in people:
+        try:
+            with owned.scope(user_id), SessionLocal() as db:
+                check_due_reminders(db)
+        except Exception as e:
+            # One person's bad tick (e.g. VAPID not configured yet) must not stop everyone else's.
+            print(f"reminder check failed for account {user_id}: {e}")
+
+
 async def run_reminder_loop() -> None:
     while True:
         try:
-            with SessionLocal() as db:
-                check_due_reminders(db)
+            await asyncio.to_thread(check_everyones_reminders)
         except Exception as e:
             # A bad tick (e.g. VAPID not configured yet) shouldn't kill the
             # loop - log and try again next cycle.

@@ -8,6 +8,8 @@ from typing import List, Optional
 import yaml
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
+from shared_python import accounts_gate, owned
+from shared_python.accounts_gate import Account
 from sqlalchemy.orm import Session
 
 from .. import crud, resume_gen, schemas
@@ -19,8 +21,13 @@ router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 # In-memory progress tracking for bulk resume generation. Fine for a
 # single-process personal app - lost on restart, but that only drops an
 # in-flight progress bar, never generated data (each job's row is already
-# committed by the time its entry lands here).
+# committed by the time its entry lands here). Each batch remembers whose it
+# is, and only that person may read its progress.
 _BULK_BATCHES: dict = {}
+
+# Resume generation reads the ADMINISTRATOR's resume data from the resume app and spends their Anthropic key, so only
+# an administrator may use it, and so may nobody else render documents through the resume app's pipeline.
+ADMIN_ONLY = [Depends(accounts_gate.require_admin)]
 
 
 @router.get("", response_model=List[schemas.Job])
@@ -31,7 +38,7 @@ def list_jobs(db: Session = Depends(get_db)):
 @router.post("/import", response_model=schemas.JobImportResult)
 async def import_jobs(
     file: UploadFile = File(...),
-    owner_id: Optional[int] = Form(None),
+    person_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
 ):
     raw = await file.read()
@@ -42,7 +49,7 @@ async def import_jobs(
     reader = csv.DictReader(io.StringIO(text))
     if reader.fieldnames is None or "url" not in reader.fieldnames:
         raise HTTPException(status_code=400, detail="CSV is missing a 'url' column")
-    return crud.import_jobs_from_csv(db, list(reader), owner_id=owner_id)
+    return crud.import_jobs_from_csv(db, list(reader), person_id=person_id)
 
 
 @router.post("", response_model=schemas.Job)
@@ -94,7 +101,7 @@ def _generate_and_store(db: Session, job) -> None:
     db.commit()
 
 
-@router.post("/{job_id}/generate-resume", response_model=schemas.Job)
+@router.post("/{job_id}/generate-resume", response_model=schemas.Job, dependencies=ADMIN_ONLY)
 def generate_resume(job_id: int, db: Session = Depends(get_db)):
     job = crud.get_job(db, job_id)
     if job is None:
@@ -131,12 +138,12 @@ def _download_resume(db: Session, job_id: int, fmt: str) -> Response:
     )
 
 
-@router.get("/{job_id}/resume.pdf")
+@router.get("/{job_id}/resume.pdf", dependencies=ADMIN_ONLY)
 def download_resume_pdf(job_id: int, db: Session = Depends(get_db)):
     return _download_resume(db, job_id, "pdf")
 
 
-@router.get("/{job_id}/resume.docx")
+@router.get("/{job_id}/resume.docx", dependencies=ADMIN_ONLY)
 def download_resume_docx(job_id: int, db: Session = Depends(get_db)):
     return _download_resume(db, job_id, "docx")
 
@@ -170,45 +177,46 @@ def _download_cover_letter(db: Session, job_id: int, fmt: str) -> Response:
     )
 
 
-@router.get("/{job_id}/cover-letter.pdf")
+@router.get("/{job_id}/cover-letter.pdf", dependencies=ADMIN_ONLY)
 def download_cover_letter_pdf(job_id: int, db: Session = Depends(get_db)):
     return _download_cover_letter(db, job_id, "pdf")
 
 
-@router.get("/{job_id}/cover-letter.docx")
+@router.get("/{job_id}/cover-letter.docx", dependencies=ADMIN_ONLY)
 def download_cover_letter_docx(job_id: int, db: Session = Depends(get_db)):
     return _download_cover_letter(db, job_id, "docx")
 
 
-def _run_bulk_generation(batch_id: str, job_ids: List[int]) -> None:
+def _run_bulk_generation(batch_id: str, job_ids: List[int], owner_id: int) -> None:
     """Runs in the background after generate_resumes_bulk's response is
     already sent - opens its own DB session rather than reusing the
     request's, since this can run for a while (one Claude call + one
     resume-app fetch per job, sequentially) well past when the request's
-    session would normally be torn down."""
+    session would normally be torn down. It works inside the requesting
+    person's own scope, set here rather than relied on from the request that
+    started it."""
     batch = _BULK_BATCHES[batch_id]
-    db = SessionLocal()
     try:
-        for job_id in job_ids:
-            job = crud.get_job(db, job_id)
-            result = {
-                "job_id": job_id,
-                "name": job.name if job is not None else f"Job #{job_id}",
-                "ok": False,
-                "error": None,
-            }
-            if job is None:
-                result["error"] = "Job no longer exists"
-            else:
-                try:
-                    _generate_and_store(db, job)
-                    result["ok"] = True
-                except resume_gen.ResumeGenerationError as e:
-                    result["error"] = str(e)
-            batch["results"].append(result)
-            batch["done"] += 1
+        with owned.scope(owner_id), SessionLocal() as db:
+            for job_id in job_ids:
+                job = crud.get_job(db, job_id)
+                result = {
+                    "job_id": job_id,
+                    "name": job.name if job is not None else f"Job #{job_id}",
+                    "ok": False,
+                    "error": None,
+                }
+                if job is None:
+                    result["error"] = "Job no longer exists"
+                else:
+                    try:
+                        _generate_and_store(db, job)
+                        result["ok"] = True
+                    except resume_gen.ResumeGenerationError as e:
+                        result["error"] = str(e)
+                batch["results"].append(result)
+                batch["done"] += 1
     finally:
-        db.close()
         batch["status"] = "done"
 
 
@@ -217,20 +225,22 @@ def generate_resumes_bulk(
     body: schemas.ResumeBatchRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    admin: Account = Depends(accounts_gate.require_admin),
 ):
     jobs = crud.get_jobs_by_ids(db, body.job_ids)
     if not jobs:
         raise HTTPException(status_code=400, detail="No matching jobs found")
 
     batch_id = uuid.uuid4().hex
-    _BULK_BATCHES[batch_id] = {"total": len(jobs), "done": 0, "status": "running", "results": []}
-    background_tasks.add_task(_run_bulk_generation, batch_id, [j.id for j in jobs])
+    _BULK_BATCHES[batch_id] = {"total": len(jobs), "done": 0, "status": "running", "results": [], "owner_id": admin.id}
+    background_tasks.add_task(_run_bulk_generation, batch_id, [j.id for j in jobs], admin.id)
     return schemas.ResumeBatchStarted(batch_id=batch_id)
 
 
 @router.get("/generate-resumes-bulk/{batch_id}", response_model=schemas.ResumeBatchStatus)
-def get_bulk_status(batch_id: str):
+def get_bulk_status(batch_id: str, account: Account = Depends(accounts_gate.require_admin)):
     batch = _BULK_BATCHES.get(batch_id)
-    if batch is None:
+    # Someone else's batch looks exactly like one that does not exist.
+    if batch is None or batch["owner_id"] != account.id:
         raise HTTPException(status_code=404, detail="Batch not found")
-    return schemas.ResumeBatchStatus(batch_id=batch_id, **batch)
+    return schemas.ResumeBatchStatus(batch_id=batch_id, **{k: v for k, v in batch.items() if k != "owner_id"})

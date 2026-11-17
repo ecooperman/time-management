@@ -89,3 +89,15 @@ def test_a_job_with_tasks_cannot_be_deleted(client, category):
     job = client.post("/api/jobs", json={"name": "Analyst", "url": "https://example.com/j"}).json()
     make_task(client, category, job_id=job["id"])
     assert client.delete(f"/api/jobs/{job['id']}").status_code == 409
+
+
+def test_a_recurring_task_is_never_filled_in_further_ahead_than_a_calendar_could_show(client, category, db):
+    from datetime import datetime
+
+    from app import crud, models
+
+    task = client.post("/api/tasks", json={"title": "daily", "category_id": category["id"]}).json()
+    client.patch(f"/api/tasks/{task['id']}", json={"scheduled_date": datetime.now().isoformat(), "repeat_daily": True})
+    client.get("/api/tasks", params={"start": "2000-01-01T00:00:00", "end": "2100-01-01T00:00:00"})
+    made = db.query(models.Task).filter(models.Task.series_id == task["id"]).count()
+    assert 0 < made <= crud.MAX_DAYS_AHEAD
