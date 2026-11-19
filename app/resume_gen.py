@@ -13,11 +13,13 @@ import json
 import re
 from typing import Tuple
 
-import anthropic
+from shared_python.lazy import lazy_module
 import httpx
 import yaml
 
 from . import config
+
+anthropic = lazy_module("anthropic")  # imported on first use: it is slow to load and most requests never call the AI
 
 
 class ResumeGenerationError(Exception):

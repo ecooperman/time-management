@@ -132,7 +132,8 @@ The same variable lets you try the app on a copy of your data:
 
 Runs as a systemd service on the Digital Ocean droplet, reached through a
 Cloudflare Tunnel (no inbound ports opened on the droplet) and gated by
-Cloudflare Access - see `deploy/time-management.service`.
+the dashboard sign-in plus an account in this app (`app/access.py`; see
+`../DEPLOYMENT.md`, "Signing in with Auth0") - see `deploy/time-management.service`.
 
 One-time setup on the droplet:
 
@@ -151,7 +152,9 @@ sudo systemctl enable --now time-management
 
 Then add an ingress entry for `127.0.0.1:8010` to `/etc/cloudflared/config.yml`,
 route DNS for its hostname (`cloudflared tunnel route dns <tunnel-name>
-<hostname>`), and add a Cloudflare Access policy for that hostname.
+<hostname>`). Sign-in is handled by the app itself, so no Cloudflare Access
+policy is needed for the hostname (until the cutover in `../DEPLOYMENT.md`
+is finished, an existing Access policy in front of it is harmless).
 
 Ongoing deploys are automatic: `.github/workflows/deploy.yml` runs on every
 push to `main` - it SSHes in, pulls, reinstalls dependencies, runs `alembic
@@ -253,8 +256,8 @@ upgrade head`, and restarts the service. Needs these repo secrets set once
   itself has a "Mark done" action (long-press/pull-down to reveal it, same
   as any native notification) that PATCHes the task straight from the
   service worker with no app UI involved - if that fails for any reason
-  (most likely a lapsed Cloudflare Access session, which needs a real
-  browser to re-authenticate), it falls back to opening the app instead of
+  (most likely a lapsed sign-in session, which needs a real
+  browser to sign in again), it falls back to opening the app instead of
   silently doing nothing.
 - The backend (`app/`) is a plain JSON REST API; the frontend
   (`static/app.js`) is a thin vanilla-JS client (drag-and-drop via SortableJS)
