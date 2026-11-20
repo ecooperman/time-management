@@ -23,7 +23,7 @@ below for how schema changes are handled from here on.
 
 ## Accounts and privacy
 
-Several people can use the app, and **everyone's tasks, jobs, categories, people labels and reminder devices are
+Several people can use the app, and **everyone's tasks, categories and reminder devices are
 completely private to them.** It signs in through the shared front door (the dashboard) and is default-deny: signing
 in is not enough, a person needs an account here. Only administrators (`ADMIN_EMAILS`) can create accounts, from the
 **Users** page (also remove, restore, or delete a removed person's data); an administrator's own account is made on their
@@ -36,31 +36,14 @@ to that person below the app's own code (and refuses a row that points at anothe
 `tests/test_accounts.py` (a second person calls every route against the first person's data) are the places to look.
 Anything new that holds a person's data must inherit `owned.OwnedMixin` (a test fails otherwise) and must not use raw SQL.
 
-Resume generation acts as the administrator (their resume data, their Anthropic key), so it, its downloads, and the
-resume app's list of people are **administrator-only**; everyone else just doesn't see those controls. Reminders are sent
-per person, only to that person's own devices; a device registered to one account is never taken over by another
+Reminders are sent per person, only to that person's own devices; a device registered to one account is never taken over by another
 (turn reminders off in the browser and on again to move a shared device).
 
-The "people" on the Settings page are only labels for filtering jobs (jobs are tagged with `person_id`); they are not accounts.
-
-### Environment variables (resume generation)
-
-The "Generate Resume" feature on the Jobs page (see the Notes section below)
-needs three environment variables - unset, the feature fails with a clear
-error rather than crashing the app:
-
-| Variable | Required for | Notes |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | Calling Claude to tailor the resume/cover letter | Standard Anthropic API key |
-| `INTERNAL_API_TOKEN` | Talking to the `resume` app's internal API | Must be the exact same value set on that app's `INTERNAL_API_TOKEN` - see its README |
-| `RESUME_ADMIN_URL` | Finding the `resume` app's admin API | Optional - defaults to `http://127.0.0.1:8041`, correct for the shared droplet |
-
-Locally, export these in your shell before running the app. On the droplet,
-`ANTHROPIC_API_KEY` comes from the shared secrets file every app reads
-(`/etc/personal-apps/shared.env` - see `DEPLOYMENT.md`), and the other two
-are set directly in `/etc/systemd/system/time-management.service` (never
-commit real values - see `deploy/time-management.service` for the
-placeholder lines).
+**Jobs are not here any more (2026-11-20).** The job tracker, fit scoring, tailored resume and cover letter, and the Chrome extension's CSV import all
+moved to the resume app (its Jobs page). A task can still carry a plain **link** (`tasks.link_url`, shown as "link" on its card and editable in the task
+window and the New task form), which is where an "Apply to ..." task keeps its posting. The old `jobs` and `people` tables, and `tasks.job_id`, are
+left in the database untouched as a record (nothing reads them; deleting a removed person's data still clears them). Marking such a task done no
+longer marks anything applied: that lives on the job in the resume app.
 
 ### Environment variables (task reminder push notifications)
 
@@ -178,55 +161,8 @@ upgrade head`, and restarts the service. Needs these repo secrets set once
   on their original day if left unfinished. Rolling those forward would land
   them on a day that already has (or will get) its own occurrence, producing
   a duplicate.
-- Jobs (name/URL/applied, plus optional company name/URL) live in their own
-  sidebar section below the backlog. Company name shows on both the job card
-  and any task linked to that job (as a link, if a company URL was given). A
-  job is a drag *source*, not something you reorder into place:
-  dragging a job card onto a day (or onto the backlog) clones out a new task
-  titled "Apply to `<job name>`", linked to that job, defaulting to the
-  "Applying for Jobs" category - the job card itself stays put, so you can
-  drag it again later for a follow-up or interview-prep task. Marking a
-  job-linked task done sets that job's `applied` flag to true; using
-  "Reopen" on that same task sets it back to false. The job's `applied`
-  checkbox can also be toggled directly, independent of any task. A job
-  can't be deleted while any task still links to it. Clicking a job card
-  (anywhere except its URL link, Applied checkbox, or delete button) opens
-  an edit modal for all of its fields.
-- Jobs can be bulk-imported from a CSV export of the
-  [job-application-chrome-extension](../job-application-chrome-extension)
-  fit-scoring tool ("Import Jobs from CSV" on the Jobs page). Expected
-  columns: `url, title, company, salary, tier, summary, matched, gaps,
-  strengths, scored_at, jd_text` (`salary` is free text - often blank, since
-  most postings don't disclose it; `tier` is one of Weak/Possible/Good/Strong
-  and shows as a colored badge on job cards, the task modal, and the Jobs
-  page, where the rest of the scoring detail - salary, summary,
-  matched/gaps/strengths, and the full job description - is viewable by
-  expanding a card). Matching is by
-  `url`: importing a job that's already here refreshes only the scoring
-  fields, never `applied` or anything edited by hand, so re-running the
-  extension and re-importing is always safe to repeat.
-- Each job card on the Jobs page can generate a tailored resume + cover
-  letter ("Generate Resume + Cover Letter", or "Generate Resumes for
-  Filtered Jobs" to do a whole filtered batch at once, with a confirmation
-  modal listing exactly which jobs first). This fetches the live resume
-  data from the `resume` app - the job owner's own person if they've picked
-  one in People (Settings), else the resume app's default person - asks
-  Claude to tailor it to that job's stored JD text
-  (reordering/trimming/rephrasing only - never inventing experience) plus
-  write a cover letter, and stores the result on the job. The People
-  section's "Resume" dropdown is populated live from the resume app itself
-  (`GET /api/people/resume-people` here, proxying the resume app's own
-  `GET /api/resume-people`) - time-management never stores or manages any
-  resume content itself, that all lives in the resume app's own People
-  admin page (a completely separate, browser-facing UI from this proxy -
-  see the `resume` app's README). "Download PDF"/"Download DOCX" then
-  render on demand through the `resume` app's own
-  Jinja2/Playwright/python-docx pipeline (see `app/resume_gen.py` and the
-  `resume` app's `app/render.py`/`app/admin.py`) - the output is styled
-  like the real resume, not a plain-text dump. Regenerating overwrites the
-  previous result for that job. See "Environment variables" above for what
-  this needs configured; the
-  `resume` app must be running and reachable for it to work.
+- A task can carry an optional plain link (for example a job posting): it shows as "link" on the card and an "Open the link" entry in the task window. Added in the New
+  task form or the task window; it is copied onto each occurrence of a repeating task. (Jobs themselves live in the resume app now; see "Accounts and privacy".)
 - The calendar defaults to Work Week view on load.
 - A task can be set to repeat daily from its modal (only once it's been
   scheduled on a day - repeating needs a start date). Occurrences for days

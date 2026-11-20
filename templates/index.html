@@ -48,6 +48,10 @@
             Notes
             <textarea id="task-description" rows="2"></textarea>
           </label>
+          <label>
+            Link <span class="hint">(optional, for example a job posting)</span>
+            <input type="url" id="task-link" placeholder="https://..." />
+          </label>
           <label class="checkbox-label">
             <input type="checkbox" id="task-important" />
             Mark as important
@@ -61,9 +65,6 @@
 
         <h2>Backlog <span class="hint">(drag onto a day)</span></h2>
         <div id="backlog-list" class="task-list" data-date=""></div>
-
-        <h2>Jobs <span class="hint">(drag onto a day to create an apply task)</span></h2>
-        <div id="jobs-list" class="job-list"></div>
       </div>
     </aside>
 
@@ -107,6 +108,13 @@
         Notes
         <textarea id="modal-task-description" rows="2"></textarea>
       </label>
+      <label>
+        Link <span class="hint">(optional)</span>
+        <input type="url" id="modal-task-link" placeholder="https://..." />
+      </label>
+      <div id="modal-link-open" class="linked-job hidden">
+        <a id="modal-link-open-anchor" href="#" target="_blank" rel="noopener noreferrer">Open the link</a>
+      </div>
       <div class="row">
         <label>
           Estimate (min)
@@ -176,13 +184,6 @@
         <span>Status: <strong id="modal-task-status"></strong></span>
       </div>
 
-      <div id="modal-linked-job" class="linked-job hidden">
-        Linked job: <a id="modal-linked-job-link" href="#" target="_blank" rel="noopener"></a>
-        <span id="modal-linked-job-company"></span>
-        <span id="modal-linked-job-tier"></span>
-        <span id="modal-linked-job-applied"></span>
-      </div>
-
       <div class="modal-actions">
         <button id="modal-save" data-btn-icon="check">Save</button>
         <button id="modal-mark-done" data-btn-icon="check">Mark done</button>
@@ -190,39 +191,6 @@
         <button id="modal-toggle-hold" data-btn-icon="pause">Put on hold</button>
         <button id="modal-to-backlog" data-btn-icon="inbox">Back to backlog</button>
         <button id="modal-delete" class="danger-btn" data-btn-icon="trash">Delete</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="job-modal" class="modal-overlay hidden">
-    <div class="modal">
-      <button id="job-modal-close" class="modal-close" data-btn-icon="x" aria-label="Close">&times;</button>
-      <h2>Edit job</h2>
-
-      <label>
-        Name
-        <input type="text" id="job-modal-name" />
-      </label>
-      <label>
-        URL
-        <input type="url" id="job-modal-url" />
-      </label>
-      <label>
-        Company <span class="hint">(optional)</span>
-        <input type="text" id="job-modal-company" />
-      </label>
-      <label>
-        Company URL <span class="hint">(optional)</span>
-        <input type="url" id="job-modal-company-url" />
-      </label>
-      <label class="checkbox-label">
-        <input type="checkbox" id="job-modal-applied" />
-        Applied
-      </label>
-
-      <div class="modal-actions">
-        <button id="job-modal-save" data-btn-icon="check">Save</button>
-        <button id="job-modal-delete" class="danger-btn" data-btn-icon="trash">Delete</button>
       </div>
     </div>
   </div>

@@ -1,16 +1,14 @@
 """Who may use this app, and whose data they see.
 
-Several people can have an account, each with completely private tasks, jobs and reminders. The app has no accounts of
+Several people can have an account, each with completely private tasks and reminders. The app has no accounts of
 its own to check against until someone is let in (default-deny): an administrator adds a person on the Users page,
 or, for an administrator, the account is made on their first sign-in (taking over the data that existed before accounts).
 
 shared_python.accounts_gate wraps the WHOLE app: every page, API route and file refuses anyone without an account,
 and runs each request inside that person's scope, so every database read and write is filtered to them below the
-routes' own code (shared_python.owned). Only an administrator may use what acts as the administrator or spends their
-money: resume generation (it reads the administrator's resume data and calls the Anthropic API on their key).
+routes' own code (shared_python.owned). Only an administrator may let people in (the Users page).
 
-Nothing else calls this app (it calls the resume app, not the other way round), so there is no machine-to-machine
-exception. Three files are public because a browser fetches them with no cookie and they hold nothing private:
+Nothing calls this app, so there is no machine-to-machine exception. Three files are public because a browser fetches them with no cookie and they hold nothing private:
 the installable-app manifest, the icons, and the push-notification service worker (a service worker script that
 redirects to a login page is refused by the browser, which would break push for a signed-out device)."""
 from typing import Union

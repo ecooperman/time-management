@@ -13,7 +13,7 @@ from shared_python import accounts_gate, oidc_login, owned
 from . import access, config, crud, schemas
 from .config import SHARED_ASSETS_BASE
 from .reminders import run_reminder_loop
-from .routers import categories, jobs, people, push, tasks, users
+from .routers import categories, push, tasks, users
 
 # Schema is owned by Alembic migrations (see migrations/) - run
 # `alembic upgrade head` before starting the app rather than relying on
@@ -80,7 +80,6 @@ def get_me(request: Request, account=Depends(accounts_gate.current_account)):
         id=account.id,
         email=account.email,
         is_admin=account.is_admin,
-        can_use={"resume": account.is_admin},
         logout_url=oidc_login.logout_url(request),
     )
 
@@ -96,7 +95,6 @@ def _render(name: str):
 
 
 app.get("/", response_class=HTMLResponse)(_render("index.html"))
-app.get("/jobs.html", response_class=HTMLResponse)(_render("jobs.html"))
 app.get("/admin.html", response_class=HTMLResponse)(_render("admin.html"))
 app.get("/users.html", response_class=HTMLResponse)(_render("users.html"))
 
@@ -113,8 +111,6 @@ async def no_cache(request: Request, call_next):
 
 
 app.include_router(categories.router)
-app.include_router(jobs.router)
-app.include_router(people.router)
 app.include_router(push.router)
 app.include_router(tasks.router)
 app.include_router(users.router)

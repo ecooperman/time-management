@@ -17,31 +17,17 @@ PUBLIC_URL = "https://time.evancooperman.com" if ENV == "production" else f"http
 
 # Who is signed in (shared_python): only people with an account get in, each into their own private data (see
 # app/access.py). ADMIN_EMAILS (comma-separated) comes from the shared secrets file on the droplet: they always have an
-# account and are the only ones who can let others in or use resume generation. Locally the dev user is one, and is
+# account and are the only ones who can let others in. Locally the dev user is one, and is
 # who every request is treated as.
 DEV_USER_EMAIL = os.environ.get("DEV_USER_EMAIL", "dev@localhost.test").strip().lower()
 ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 if ENV != "production":
     ADMIN_EMAILS.add(DEV_USER_EMAIL)
 
-# Resume generation feature (see app/resume_gen.py): calls the resume app's
-# admin API to fetch the right resume data and render tailored PDFs/DOCX, and calls
-# the Anthropic API to do the tailoring itself. All three are secrets/config
-# that only make sense as environment variables - exported in your shell for
-# local dev; on the droplet INTERNAL_API_TOKEN/RESUME_ADMIN_URL go on this
-# app's systemd unit and ANTHROPIC_API_KEY in the shared secrets file every
-# app reads (/etc/personal-apps/shared.env, see DEPLOYMENT.md). Never
-# committed.
-# The feature degrades to a clear error (not a crash) if these are unset;
-# see resume_gen.py.
-RESUME_ADMIN_URL = os.environ.get("RESUME_ADMIN_URL", "http://127.0.0.1:8041")
-INTERNAL_API_TOKEN = os.environ.get("INTERNAL_API_TOKEN")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-
 # Task reminder push notifications (see app/push.py, app/reminders.py).
 # The VAPID keypair is this app's own Web Push identity - not a secret
-# issued by/shared with anyone else, so unlike the two above there's no
-# external account it has to match. Generate once with
+# issued by/shared with anyone else, so there's no external account it
+# has to match. Generate once with
 # `python -m app.push generate-vapid-keys`, then set these the same way as
 # the rest (systemd env on the droplet, exported in your shell locally).
 # VAPID_SUBJECT is a mailto: URI the push services use to contact you if

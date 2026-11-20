@@ -1,10 +1,10 @@
-"""Several people can use this app, and each person's tasks, jobs, categories and reminders are completely private.
+"""Several people can use this app, and each person's tasks, categories and reminders are completely private.
 
 The tests that matter most are the two-person ones: one person makes data, then ANOTHER person with a valid account
 tries every route of the app against it (reading, listing, changing, deleting, pointing their own data at it) and must
 get nothing and change nothing. Alongside: who can get in at all (default-deny), that no sign-in trick makes one person
 another, who may invite, that reminders only ever go to their owner's own devices, and that what acts as the
-administrator (resume generation) stays the administrator's."""
+administrator (letting people in) stays the administrator's."""
 import re
 import sqlite3
 import time
@@ -25,12 +25,11 @@ CLIENT = "client-123"
 FRONT = "https://dashboard.example.org"
 ADMIN = "owner@example.com"
 BOB_TASK = "SECRET-BOB-TASK-XYZ"
-BOB_JOB = "SECRET-BOB-JOB-XYZ"
+BOB_LINK = "https://secret-bob-link.example.com/bobs-job"
 BOB_CATEGORY = "Secret-Bob-Category"
-BOB_PERSON = "Secret-Bob-Person"
 BOB_ENDPOINT = "https://push.example.com/bobs-secret-device"
 OWNED_TABLES = (models.Category, models.Person, models.Job, models.Task, models.PushSubscription)
-EVERYTHING = ("categories", "people", "jobs", "tasks")
+EVERYTHING = ("categories", "tasks")
 def _range():
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     return {"start": (today - timedelta(days=7)).isoformat(), "end": (today + timedelta(days=14)).isoformat()}
@@ -84,11 +83,7 @@ def fill_bobs_data(bob):
     """Everything a person can own, with recognisable names."""
     cat = bob.post("/api/categories", json={"name": BOB_CATEGORY, "color": "#112233"})
     assert cat.status_code == 200, cat.text
-    who = bob.post("/api/people", json={"name": BOB_PERSON, "color": "#445566"})
-    assert who.status_code == 200, who.text
-    job = bob.post("/api/jobs", json={"name": BOB_JOB, "url": "https://example.com/bobs-job", "person_id": who.json()["id"]})
-    assert job.status_code == 200, job.text
-    task = bob.post("/api/tasks", json={"title": BOB_TASK, "category_id": cat.json()["id"], "job_id": job.json()["id"]})
+    task = bob.post("/api/tasks", json={"title": BOB_TASK, "category_id": cat.json()["id"], "link_url": BOB_LINK})
     assert task.status_code == 200, task.text
     today = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0).isoformat()
     series = bob.post("/api/tasks", json={"title": "bob-daily", "category_id": cat.json()["id"]}).json()["id"]
@@ -141,7 +136,7 @@ def test_signed_in_is_not_enough_a_person_nobody_let_in_gets_nothing_from_any_ro
         if resp.status_code != 403:
             leaked.append((method, shown, resp.status_code))
     assert not leaked, leaked
-    for path in ("/", "/jobs.html", "/admin.html", "/users.html", "/app.js"):
+    for path in ("/", "/admin.html", "/users.html", "/app.js"):
         assert dana.get(path).status_code == 403
     page = dana.get("/")
     assert "have access yet" in page.text and "dana@example.com" in page.text
@@ -161,7 +156,7 @@ def test_nobody_signed_out_gets_anything(person, people):
         resp = signed_out.request(method, fill(shown, {}), json={} if method in ("POST", "PATCH", "PUT") else None)
         if resp.status_code not in (401, 302):
             answered.append((method, shown, resp.status_code))
-    for path in ("/", "/jobs.html", "/admin.html", "/users.html", "/app.js", "/jobs.js", "/admin.js", "/users.js", "/nav.js", "/style.css", "/nope"):
+    for path in ("/", "/admin.html", "/users.html", "/app.js", "/admin.js", "/users.js", "/nav.js", "/style.css", "/nope"):
         if signed_out.get(path).status_code != 302:
             answered.append(("GET", path))
     assert not answered, answered
@@ -177,7 +172,7 @@ def test_a_new_account_starts_with_the_default_categories_and_nothing_else(perso
     for email in ("bob@example.com", ADMIN):
         who = person(email)
         assert sorted(c["name"] for c in who.get("/api/categories").json()) == ["Applying for Jobs", "Home", "Resume-Building"]
-        assert who.get("/api/tasks/backlog").json() == [] and who.get("/api/jobs").json() == [] and who.get("/api/people").json() == []
+        assert who.get("/api/tasks/backlog").json() == []
 
 
 # --- no sign-in trick makes one person another --------------------------------------------------------------------------------
@@ -225,7 +220,7 @@ def test_each_person_sees_only_their_own_data(person, people):
     carol.post("/api/tasks", json={"title": "carols-task", "category_id": carol.get("/api/categories").json()[0]["id"]})
     assert BOB_TASK in str(bob.get("/api/tasks/backlog").json()) and "carols-task" not in str(snapshot(bob))
     assert [t["title"] for t in carol.get("/api/tasks/backlog").json()] == ["carols-task"]
-    assert carol.get("/api/jobs").json() == [] and carol.get("/api/people").json() == []
+    assert BOB_LINK not in str(snapshot(carol))
     assert BOB_CATEGORY not in str(carol.get("/api/categories").json())
     assert BOB_TASK not in str(snapshot(carol))
 
@@ -236,7 +231,7 @@ def test_another_person_can_neither_read_nor_change_nor_delete_anything_through_
     before = fill_bobs_data(bob)
     ids = {
         "task_id": before["tasks"] and next(t["id"] for t in before["backlog"] if t["title"] == BOB_TASK),
-        "job_id": before["jobs"][0]["id"], "person_id": before["people"][0]["id"], "user_id": people["bob"],
+        "user_id": people["bob"],
         "category_id": next(c["id"] for c in before["categories"] if c["name"] == BOB_CATEGORY),
     }
     tried, leaked = 0, []
@@ -246,43 +241,34 @@ def test_another_person_can_neither_read_nor_change_nor_delete_anything_through_
         if method in ("POST", "PATCH", "PUT"):
             kwargs["json"] = {
                 "title": "HIJACKED", "name": "HIJACKED", "color": "#000000", "description": "HIJACKED", "url": "https://example.com/h",
-                "category_id": ids["category_id"], "job_id": ids["job_id"], "person_id": ids["person_id"],
-                "job_ids": [ids["job_id"]], "updates": [{"id": ids["task_id"], "sort_order": 1, "scheduled_date": None}],
+                "category_id": ids["category_id"], "link_url": "https://example.com/hijack", "updates": [{"id": ids["task_id"], "sort_order": 1, "scheduled_date": None}],
                 "email": "hijack@example.com", "endpoint": BOB_ENDPOINT, "keys": {"p256dh": "x", "auth": "y"},
             }
-        resp = carol.request(method, path, params={"person_id": ids["person_id"], "category_id": ids["category_id"], **WIDE}, **kwargs)
+        resp = carol.request(method, path, params={"category_id": ids["category_id"], **WIDE}, **kwargs)
         tried += 1
-        for mark in (BOB_TASK, BOB_JOB, BOB_CATEGORY, BOB_PERSON, "bob-daily"):
+        for mark in (BOB_TASK, BOB_LINK, BOB_CATEGORY, "bob-daily"):
             if mark in resp.text:
                 leaked.append((method, shown, f"{mark} in the response"))
         if method in ("PATCH", "PUT", "DELETE") and resp.status_code < 300:
             leaked.append((method, shown, resp.status_code))
         if method == "GET" and "{" in shown and resp.status_code == 200:
             leaked.append((method, shown, "an id route answered"))
-    assert tried > 25 and not leaked, leaked
+    assert tried > 15 and not leaked, leaked
     assert snapshot(bob) == before  # not a name, a link, a date or a row changed
     assert devices_of(people["bob"]) == [BOB_ENDPOINT]
     assert "HIJACKED" not in str(snapshot(bob))
-    assert BOB_TASK not in str(snapshot(carol)) and BOB_JOB not in str(snapshot(carol))
+    assert BOB_TASK not in str(snapshot(carol)) and BOB_LINK not in str(snapshot(carol))
 
 
 def test_pointing_ones_own_data_at_someone_elses_is_refused(person, people):
     bob, carol = person("bob@example.com"), person("carol@example.com")
     before = fill_bobs_data(bob)
     bobs_cat = next(c["id"] for c in before["categories"] if c["name"] == BOB_CATEGORY)
-    bobs_job, bobs_person = before["jobs"][0]["id"], before["people"][0]["id"]
     bobs_task = next(t["id"] for t in before["backlog"] if t["title"] == BOB_TASK)
     mine_cat = carol.get("/api/categories").json()[0]["id"]
     assert carol.post("/api/tasks", json={"title": "x", "category_id": bobs_cat}).status_code == 400
-    assert carol.post("/api/tasks", json={"title": "x", "category_id": mine_cat, "job_id": bobs_job}).status_code == 400
     mine = carol.post("/api/tasks", json={"title": "mine", "category_id": mine_cat}).json()["id"]
     assert carol.patch(f"/api/tasks/{mine}", json={"category_id": bobs_cat}).status_code == 400
-    assert carol.patch(f"/api/tasks/{mine}", json={"job_id": bobs_job}).status_code == 400
-    assert carol.post("/api/jobs", json={"name": "j", "url": "https://example.com/j", "person_id": bobs_person}).status_code == 400
-    myjob = carol.post("/api/jobs", json={"name": "j", "url": "https://example.com/j"}).json()["id"]
-    assert carol.patch(f"/api/jobs/{myjob}", json={"person_id": bobs_person}).status_code == 400
-    csv = b"url,title\nhttps://example.com/new,A job\n"
-    assert carol.post("/api/jobs/import", files={"file": ("j.csv", csv)}, data={"person_id": str(bobs_person)}).status_code == 400
     # moving Bob's task by naming its id in a reorder does nothing to it
     carol.post("/api/tasks/reorder", json={"updates": [{"id": bobs_task, "sort_order": 999, "scheduled_date": "2031-01-01T00:00:00"}]})
     assert snapshot(bob) == before
@@ -299,19 +285,22 @@ def test_the_data_layer_alone_refuses_a_task_that_points_at_someone_elses_catego
             db.flush()
 
 
-def test_two_people_may_each_have_the_same_category_and_person_names(person, people):
+def test_two_people_may_each_have_the_same_category_names(person, people):
     bob, carol = person("bob@example.com"), person("carol@example.com")
+    made = []
     for who in (bob, carol):
-        assert who.post("/api/people", json={"name": "Same Name", "color": "#111111"}).status_code == 200
+        resp = who.post("/api/categories", json={"name": "Same Name", "color": "#111111"})
+        assert resp.status_code == 200
+        made.append(resp.json()["id"])
         assert "Home" in [c["name"] for c in who.get("/api/categories").json()]  # everyone starts with the defaults
-    assert bob.get("/api/people").json()[0]["id"] != carol.get("/api/people").json()[0]["id"]
+    assert made[0] != made[1]
 
 
 def test_the_administrator_is_just_another_owner_and_cannot_read_a_persons_data_through_the_app(person, people):
     bob, admin = person("bob@example.com"), person(ADMIN)
     before = fill_bobs_data(bob)
     task_id = next(t["id"] for t in before["backlog"] if t["title"] == BOB_TASK)
-    assert admin.get("/api/tasks/backlog").json() == [] and BOB_JOB not in admin.get("/api/jobs").text
+    assert admin.get("/api/tasks/backlog").json() == [] and BOB_LINK not in admin.get("/api/tasks").text
     assert admin.get(f"/api/tasks/{task_id}").status_code == 404
     assert admin.delete(f"/api/tasks/{task_id}").status_code == 404
     assert snapshot(bob) == before
@@ -417,45 +406,20 @@ def test_nobody_can_remove_someone_elses_device(person, people):
     assert devices_of(people["bob"]) == [BOB_ENDPOINT]
 
 
-# --- what acts as the administrator stays the administrator's ---------------------------------------------------------------------------
+# --- jobs live in the resume app now: this app has none of their routes or pages left -----------------------------------------------------
 
 
-RESUME_ROUTES = [
-    ("POST", "/api/jobs/1/generate-resume", None), ("GET", "/api/jobs/1/resume.pdf", None), ("GET", "/api/jobs/1/resume.docx", None),
-    ("GET", "/api/jobs/1/cover-letter.pdf", None), ("GET", "/api/jobs/1/cover-letter.docx", None),
-    ("POST", "/api/jobs/generate-resumes-bulk", {"job_ids": [1]}), ("GET", "/api/jobs/generate-resumes-bulk/abc", None),
-    ("GET", "/api/people/resume-people", None),
-]
+GONE = [("GET", "/api/jobs"), ("POST", "/api/jobs"), ("POST", "/api/jobs/import"), ("PATCH", "/api/jobs/1"), ("DELETE", "/api/jobs/1"),
+        ("POST", "/api/jobs/1/generate-resume"), ("GET", "/api/jobs/1/resume.pdf"), ("POST", "/api/jobs/generate-resumes-bulk"),
+        ("GET", "/api/people"), ("POST", "/api/people"), ("GET", "/api/people/resume-people"), ("GET", "/jobs.html"), ("GET", "/jobs.js")]
 
 
-def test_only_an_administrator_can_use_resume_generation_or_see_the_resume_apps_people(person, people):
-    carol = person("carol@example.com")
-    for method, path, body in RESUME_ROUTES:
-        assert carol.request(method, path, json=body).status_code == 403, (method, path)
-    me = carol.get("/api/me").json()
-    assert me["is_admin"] is False and me["can_use"] == {"resume": False}
-    assert person(ADMIN).get("/api/me").json()["can_use"] == {"resume": True}
-
-
-def test_only_an_administrator_can_name_which_resume_a_person_uses(person, people):
-    carol, admin = person("carol@example.com"), person(ADMIN)
-    assert carol.post("/api/people", json={"name": "X", "color": "#000000", "resume_person_slug": "evan"}).status_code == 403
-    mine = carol.post("/api/people", json={"name": "Y", "color": "#000000"}).json()["id"]
-    assert carol.patch(f"/api/people/{mine}", json={"resume_person_slug": "evan"}).status_code == 403
-    assert carol.patch(f"/api/people/{mine}", json={"name": "Renamed"}).status_code == 200  # the rest is theirs to edit
-    assert admin.post("/api/people", json={"name": "Z", "color": "#000000", "resume_person_slug": "rach"}).json()["resume_person_slug"] == "rach"
-
-
-def test_nothing_in_another_persons_resume_generation_batch_is_readable(person, people, monkeypatch):
-    from app.routers import jobs as jobs_router
-
-    jobs_router._BULK_BATCHES["feedface"] = {"total": 1, "done": 1, "status": "done", "owner_id": people["bob"],
-                                            "results": [{"job_id": 1, "name": BOB_JOB, "ok": True, "error": None}]}
-    try:
-        assert person(ADMIN).get("/api/jobs/generate-resumes-bulk/feedface").status_code == 404  # an administrator's, but not theirs
-        assert BOB_JOB not in person(ADMIN).get("/api/jobs/generate-resumes-bulk/feedface").text
-    finally:
-        jobs_router._BULK_BATCHES.pop("feedface", None)
+def test_the_job_and_label_routes_and_pages_are_gone_even_for_the_administrator(person, people):
+    for who in (person("carol@example.com"), person(ADMIN)):
+        for method, path in GONE:
+            assert who.request(method, path, json={} if method in ("POST", "PATCH") else None).status_code in (404, 405), (method, path)
+    me = person(ADMIN).get("/api/me").json()
+    assert me["is_admin"] is True and "can_use" not in me
 
 
 # --- who may invite: only administrators ---------------------------------------------------------------------------------------------
@@ -508,6 +472,12 @@ def test_an_administrators_access_cannot_be_changed_or_removed_from_the_users_pa
 def test_deleting_a_removed_persons_data_deletes_exactly_theirs(person, people, as_user):
     bob, carol, admin = person("bob@example.com"), person("carol@example.com"), person(ADMIN)
     fill_bobs_data(bob)
+    with as_user(people["bob"]) as db:  # the old label and job rows the app no longer has routes for are still his, and still go with him
+        label = models.Person(name="old label", color="#000000")
+        db.add(label)
+        db.flush()
+        db.add(models.Job(name="old job", url="https://example.com/old", person_id=label.id))
+        db.commit()
     carol.post("/api/tasks", json={"title": "carols-task", "category_id": carol.get("/api/categories").json()[0]["id"]})
     assert admin.delete(f"/api/users/{people['bob']}/data").status_code == 409  # not removed yet
     admin.patch(f"/api/users/{people['bob']}", json={"status": "removed"})

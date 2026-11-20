@@ -42,7 +42,8 @@ class Category(Base, owned.OwnedMixin):
 
 
 class Person(Base, owned.OwnedMixin):
-    """A label jobs can be tagged with (e.g. you and a partner whose job search you track together). Just a name and
+    """LEGACY (2026-11-20): jobs moved to the resume app, so this table and `jobs` are no longer used by the app; they are kept as a record and as
+    the source for the resume app's one-time import. A label jobs can be tagged with (e.g. you and a partner whose job search you track together). Just a name and
     colour to filter by: it is NOT an account and gives nobody access to anything. Each person with an account
     keeps their own list of these."""
 
@@ -63,6 +64,8 @@ class Person(Base, owned.OwnedMixin):
 
 
 class Job(Base, owned.OwnedMixin):
+    """LEGACY (2026-11-20): see Person above. Jobs live in the resume app now; this table is only a record."""
+
     __tablename__ = "jobs"
 
     id = Column(Integer, primary_key=True)
@@ -110,7 +113,9 @@ class Task(Base, owned.OwnedMixin):
 
     id = Column(Integer, primary_key=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
-    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=True)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=True)  # LEGACY: jobs now live in the resume app; kept only so old data is not lost. Use link_url.
+    # A plain web link for the task (for an apply task, the job posting). Set from the old linked job when jobs moved to the resume app (2026-11-20).
+    link_url = Column(String, nullable=True)
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     status = Column(Enum(TaskStatus), nullable=False, default=TaskStatus.open)

@@ -33,15 +33,21 @@ def test_marking_done_stamps_the_time_and_reopening_clears_it(client, category):
     assert reopened["completed_at"] is None
 
 
-def test_finishing_a_job_task_marks_the_job_applied_and_reopening_undoes_it(client, category):
-    job = client.post("/api/jobs", json={"name": "Analyst", "url": "https://example.com/job"}).json()
-    task = make_task(client, category, job_id=job["id"])
+def test_a_task_keeps_a_plain_link_that_can_be_added_changed_and_cleared(client, category):
+    task = make_task(client, category, link_url="https://jobs.example/1")
+    assert task["link_url"] == "https://jobs.example/1"
+    assert client.get(f"/api/tasks/{task['id']}").json()["link_url"] == "https://jobs.example/1"
+    changed = client.patch(f"/api/tasks/{task['id']}", json={"link_url": "https://jobs.example/2"}).json()
+    assert changed["link_url"] == "https://jobs.example/2"
+    assert client.patch(f"/api/tasks/{task['id']}", json={"link_url": None}).json()["link_url"] is None
+    assert make_task(client, category)["link_url"] is None
 
-    client.patch(f"/api/tasks/{task['id']}", json={"status": "done"})
-    assert [j["applied"] for j in client.get("/api/jobs").json()] == [True]
 
-    client.patch(f"/api/tasks/{task['id']}", json={"status": "open"})
-    assert [j["applied"] for j in client.get("/api/jobs").json()] == [False]
+def test_finishing_and_reopening_a_task_with_a_link_just_changes_its_status(client, category):
+    task = make_task(client, category, link_url="https://jobs.example/1")
+    assert client.patch(f"/api/tasks/{task['id']}", json={"status": "done"}).json()["link_url"] == "https://jobs.example/1"
+    reopened = client.patch(f"/api/tasks/{task['id']}", json={"status": "open"}).json()
+    assert reopened["status"] == "open" and reopened["link_url"] == "https://jobs.example/1"
 
 
 def test_putting_a_scheduled_task_on_hold_returns_it_to_the_backlog(client, category):
@@ -83,12 +89,6 @@ def test_an_unused_category_can_be_deleted(client):
     created = client.post("/api/categories", json={"name": "Errands", "color": "#112233"}).json()
     assert client.delete(f"/api/categories/{created['id']}").status_code == 200
     assert created["id"] not in [c["id"] for c in client.get("/api/categories").json()]
-
-
-def test_a_job_with_tasks_cannot_be_deleted(client, category):
-    job = client.post("/api/jobs", json={"name": "Analyst", "url": "https://example.com/j"}).json()
-    make_task(client, category, job_id=job["id"])
-    assert client.delete(f"/api/jobs/{job['id']}").status_code == 409
 
 
 def test_a_recurring_task_is_never_filled_in_further_ahead_than_a_calendar_could_show(client, category, db):

@@ -1,7 +1,5 @@
 let categories = [];
 let categoriesById = {};
-let jobs = [];
-let jobsById = {};
 let activeTaskId = null;
 let activeTaskScheduledDateKey = null; // "YYYY-MM-DD" of the open task's scheduled_date, if any - needed at save time to combine with the reminder time input into a full remind_at datetime
 let activeTaskSeriesId = null; // the open task's origin task id, if it's a materialized occurrence of a recurring series - needed by the Stop repeating/Edit series buttons
@@ -151,26 +149,19 @@ async function loadCategories() {
   populateCategorySelects();
 }
 
-function getApplyingCategoryId() {
-  const match = categories.find((c) => c.name === "Applying for Jobs");
-  if (match) return match.id;
-  return categories.length ? categories[0].id : null;
-}
-
 // --- task card + sortable lists ---
 
-function companyNode(job) {
-  if (!job || !job.company) return null;
-  if (job.company_url) {
-    const link = document.createElement("a");
-    link.href = job.company_url;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.textContent = job.company;
-    link.addEventListener("click", (e) => e.stopPropagation());
-    return link;
-  }
-  return document.createTextNode(job.company);
+// A task's plain link (for an apply task, the job posting), shown on its card; clicking it does not open the task.
+function linkNode(task) {
+  if (!task.link_url) return null;
+  const link = document.createElement("a");
+  link.href = task.link_url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = "link";
+  link.title = task.link_url;
+  link.addEventListener("click", (e) => e.stopPropagation());
+  return link;
 }
 
 function taskCardElement(task, { showDoneCheckbox = false } = {}) {
@@ -190,7 +181,7 @@ function taskCardElement(task, { showDoneCheckbox = false } = {}) {
     doneCheckbox.checked = task.status === "done";
     // Same status values the modal's Mark done/Reopen buttons already send
     // (see initModal below) - stays consistent with their side effects
-    // (completed_at, linked job's applied flag, reminder bookkeeping
+    // (completed_at, reminder bookkeeping
     // reset), all of which only crud.update_task actually implements, so
     // this goes through the same PATCH + refreshAll() rather than just
     // toggling a class locally.
@@ -227,8 +218,8 @@ function taskCardElement(task, { showDoneCheckbox = false } = {}) {
   const metaParts = [document.createTextNode(cat ? cat.name : "Uncategorized")];
   const est = minutesLabel(task.estimate_minutes);
   if (est) metaParts.push(document.createTextNode(`est ${est}`));
-  const company = companyNode(task.job);
-  if (company) metaParts.push(company);
+  const link = linkNode(task);
+  if (link) metaParts.push(link);
   if (task.status === "on_hold") metaParts.push(document.createTextNode("on hold"));
   metaParts.forEach((node, i) => {
     if (i > 0) meta.appendChild(document.createTextNode(" · "));
@@ -243,58 +234,15 @@ function taskCardElement(task, { showDoneCheckbox = false } = {}) {
 function attachSortable(el) {
   if (el._sortable) el._sortable.destroy();
   el._sortable = new Sortable(el, {
-    group: { name: "tasks", put: ["tasks", "jobs"] },
+    group: { name: "tasks" },
     animation: 150,
     onEnd: handleSortEnd,
   });
-}
-
-function attachJobsSortable(el) {
-  if (el._sortable) el._sortable.destroy();
-  el._sortable = new Sortable(el, {
-    group: { name: "jobs", pull: "clone", put: false },
-    sort: false,
-    animation: 150,
-    onEnd: handleSortEnd,
-  });
-}
-
-async function handleJobDroppedOnTaskList(evt) {
-  const jobId = Number(evt.item.dataset.jobId);
-  evt.item.remove();
-  const job = jobsById[jobId];
-  if (!job) return;
-
-  const date = evt.to.dataset.date || null;
-  const task = await Global.fetchJSON("/api/tasks", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      title: `Apply to ${job.name}`,
-      category_id: getApplyingCategoryId(),
-      job_id: jobId,
-    }),
-  });
-  if (date) {
-    await Global.fetchJSON(`/api/tasks/${task.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scheduled_date: `${date}T00:00:00`, due_date: `${date}T00:00:00` }),
-    });
-  }
-  refreshAll();
 }
 
 async function handleSortEnd(evt) {
   const fromEl = evt.from;
   const toEl = evt.to;
-
-  // A job card was dragged (cloned) from the Jobs list onto a task list -
-  // create a linked task rather than treating this as a task reorder.
-  if (evt.item.dataset.jobId && toEl.id !== "jobs-list") {
-    await handleJobDroppedOnTaskList(evt);
-    return;
-  }
 
   if (fromEl === toEl && evt.oldIndex === evt.newIndex) return;
 
@@ -326,8 +274,7 @@ async function handleSortEnd(evt) {
   // modal right away still sees its old scheduled_date (e.g. still null
   // right after a backlog->calendar drag), which wrongly disables the
   // repeat/remind fields until something else happens to trigger a
-  // refresh. Matches the same refreshAll() call handleJobDroppedOnTaskList
-  // already does above for the same reason.
+  // refresh.
   refreshAll();
 }
 
@@ -410,7 +357,7 @@ async function refreshBacklog() {
 }
 
 // --- mobile tap-to-schedule (stands in for drag-and-drop below 640px,
-// where the backlog/jobs list and the calendar day aren't visible at the
+// where the backlog list and the calendar day aren't visible at the
 // same time) ---
 
 function scheduleButton(dateKey, dayLabel, onClick) {
@@ -440,152 +387,8 @@ async function scheduleTaskToDay(taskId, dateKey) {
   await refreshAll();
 }
 
-async function createJobTaskOnDay(jobId, dateKey) {
-  const job = jobsById[jobId];
-  if (!job) return;
-  const task = await Global.fetchJSON("/api/tasks", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      title: `Apply to ${job.name}`,
-      category_id: getApplyingCategoryId(),
-      job_id: jobId,
-    }),
-  });
-  await scheduleTaskToDay(task.id, dateKey);
-}
-
-// --- jobs ---
-
-// Sidebar job cards are deliberately succinct - just enough to recognize
-// and drag the job. Full details (URL, company, applied status) and
-// creating new jobs live on the jobs.html admin page; clicking a card here
-// still opens the same edit modal for a quick in-context change.
-function tierBadge(tier) {
-  if (!tier) return null;
-  const badge = document.createElement("span");
-  badge.className = "tier-badge tier-" + tier.toLowerCase();
-  badge.textContent = tier;
-  return badge;
-}
-
-function jobCardElement(job) {
-  const card = document.createElement("div");
-  card.className = "job-card";
-  card.dataset.jobId = job.id;
-
-  const title = document.createElement("div");
-  title.className = "job-title";
-  title.textContent = job.name;
-  const tier = tierBadge(job.tier);
-  if (tier) title.appendChild(tier);
-  card.appendChild(title);
-
-  const company = companyNode(job);
-  if (company) {
-    const companyLine = document.createElement("div");
-    companyLine.className = "job-company";
-    companyLine.appendChild(company);
-    card.appendChild(companyLine);
-  }
-
-  if (job.salary) {
-    const salaryLine = document.createElement("div");
-    salaryLine.className = "job-salary";
-    salaryLine.textContent = job.salary;
-    salaryLine.title = job.salary; // full text on hover - these get long with multiple tiers/locations
-    card.appendChild(salaryLine);
-  }
-
-  card.addEventListener("click", () => openJobModal(job));
-
-  return card;
-}
-
-function renderJobs(jobsData) {
-  jobs = jobsData;
-  jobsById = Object.fromEntries(jobs.map((j) => [j.id, j]));
-  const list = document.getElementById("jobs-list");
-  list.innerHTML = "";
-  const dateKey = toISODate(anchorDate);
-  const dayLabel = anchorDate.toLocaleDateString(undefined, { weekday: "short" });
-  // Already-applied jobs are almost certainly linked to a task on the
-  // calendar already - drop them from this drag source so it stays a short
-  // list of live opportunities, not a growing history.
-  for (const job of jobs.filter((j) => !j.applied)) {
-    const card = jobCardElement(job);
-    // Hidden by CSS at 640px+ - drag-and-drop covers this on desktop.
-    card.appendChild(scheduleButton(dateKey, dayLabel, (d) => createJobTaskOnDay(job.id, d)));
-    list.appendChild(card);
-  }
-  attachJobsSortable(list);
-}
-
-async function refreshJobs() {
-  const jobsData = await Global.withLoading(document.getElementById("jobs-list"), Global.fetchJSON("/api/jobs"));
-  renderJobs(jobsData);
-}
-
-// --- job modal ---
-
-let activeJobId = null;
-
-function openJobModal(job) {
-  activeJobId = job.id;
-  document.getElementById("job-modal-name").value = job.name;
-  document.getElementById("job-modal-url").value = job.url;
-  document.getElementById("job-modal-company").value = job.company || "";
-  document.getElementById("job-modal-company-url").value = job.company_url || "";
-  document.getElementById("job-modal-applied").checked = !!job.applied;
-  document.getElementById("job-modal").classList.remove("hidden");
-}
-
-function closeJobModal() {
-  activeJobId = null;
-  document.getElementById("job-modal").classList.add("hidden");
-}
-
-function initJobModal() {
-  document.getElementById("job-modal-close").addEventListener("click", closeJobModal);
-
-  document.getElementById("job-modal-save").addEventListener("click", async () => {
-    const name = document.getElementById("job-modal-name").value.trim();
-    const url = document.getElementById("job-modal-url").value.trim();
-    const company = document.getElementById("job-modal-company").value.trim();
-    const companyUrl = document.getElementById("job-modal-company-url").value.trim();
-    if (!name || !url) return;
-    try {
-      await Global.fetchJSON(`/api/jobs/${activeJobId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          url,
-          company: company || null,
-          company_url: companyUrl || null,
-          applied: document.getElementById("job-modal-applied").checked,
-        }),
-      });
-      closeJobModal();
-      refreshAll();
-    } catch (err) {
-      alert(err.message);
-    }
-  });
-
-  document.getElementById("job-modal-delete").addEventListener("click", async () => {
-    try {
-      await Global.fetchJSON(`/api/jobs/${activeJobId}`, { method: "DELETE" });
-      closeJobModal();
-      refreshJobs();
-    } catch (err) {
-      alert(err.message);
-    }
-  });
-}
-
 async function refreshAll() {
-  await Promise.all([loadAndRenderCalendar(), refreshBacklog(), refreshJobs()]);
+  await Promise.all([loadAndRenderCalendar(), refreshBacklog()]);
 }
 
 // --- view toggle + nav ---
@@ -722,32 +525,16 @@ function openModal(task) {
   remindFields.classList.toggle("hidden", !remindCheckbox.checked);
   document.getElementById("modal-remind-disabled-hint").classList.toggle("hidden", isScheduled);
 
-  const linkedJobEl = document.getElementById("modal-linked-job");
-  if (task.job) {
-    linkedJobEl.classList.remove("hidden");
-    const link = document.getElementById("modal-linked-job-link");
-    link.textContent = task.job.name;
-    link.href = task.job.url;
-
-    const companyEl = document.getElementById("modal-linked-job-company");
-    companyEl.innerHTML = "";
-    const company = companyNode(task.job);
-    if (company) {
-      companyEl.appendChild(document.createTextNode(" at "));
-      companyEl.appendChild(company);
-    }
-
-    const tierEl = document.getElementById("modal-linked-job-tier");
-    tierEl.innerHTML = "";
-    const tier = tierBadge(task.job.tier);
-    if (tier) tierEl.appendChild(tier);
-
-    document.getElementById("modal-linked-job-applied").innerHTML = task.job.applied
-      ? '<span class="applied-badge">Applied</span>'
-      : '<span class="not-applied-badge">Not applied yet</span>';
-  } else {
-    linkedJobEl.classList.add("hidden");
-  }
+  const linkInput = document.getElementById("modal-task-link");
+  linkInput.value = task.link_url || "";
+  const showOpenLink = () => {
+    const url = linkInput.value.trim();
+    const open = document.getElementById("modal-link-open");
+    open.classList.toggle("hidden", !/^https?:\/\//i.test(url));
+    document.getElementById("modal-link-open-anchor").href = url;
+  };
+  linkInput.oninput = showOpenLink;
+  showOpenLink();
 
   document.getElementById("modal-mark-done").classList.toggle("hidden", task.status === "done");
   document.getElementById("modal-reopen").classList.toggle("hidden", task.status !== "done");
@@ -834,6 +621,7 @@ function initModal() {
           ? Number(document.getElementById("modal-task-actual").value)
           : null,
         is_important: document.getElementById("modal-task-important").checked,
+        link_url: document.getElementById("modal-task-link").value.trim() || null,
         repeat_daily: document.getElementById("modal-task-repeat").checked,
         repeat_until: repeatUntil ? `${repeatUntil}T00:00:00` : null,
         remind_at: remindAt,
@@ -923,14 +711,14 @@ function initAddTaskForm() {
           ? Number(document.getElementById("task-estimate").value)
           : null,
         description: document.getElementById("task-description").value,
+        link_url: document.getElementById("task-link").value.trim() || null,
         is_important: document.getElementById("task-important").checked,
       }),
     });
 
     // TaskCreate doesn't take a schedule date directly (a plain backlog
-    // task is the common case) - same two-step create-then-PATCH pattern
-    // handleJobDroppedOnTaskList already uses just above for the same
-    // reason. scheduleDate is already a plain "YYYY-MM-DD" string straight
+    // task is the common case) - so it is a two-step create-then-PATCH.
+    // scheduleDate is already a plain "YYYY-MM-DD" string straight
     // from the date input's own value - build the datetime string directly
     // rather than routing it through `new Date(scheduleDate)`, which
     // parses a date-only string as UTC midnight and would silently roll
@@ -999,7 +787,6 @@ async function init() {
   // backlog and delete fold into a "..." menu (shared-assets' foldActions).
   Global.foldActions(document.getElementById("modal-save").parentElement, { keep: "#modal-save, #modal-mark-done, #modal-reopen" });
   initAddTaskForm();
-  initJobModal();
   initJumpModal();
   initSidebarToggle();
   await refreshAll();

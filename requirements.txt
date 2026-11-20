@@ -5,8 +5,6 @@ jinja2
 sqlalchemy
 alembic==1.20.0
 python-multipart
-anthropic
 httpx
-pyyaml
 pywebpush
 -e ../shared-python

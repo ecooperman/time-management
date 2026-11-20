@@ -11,7 +11,7 @@ from .seed import seed_categories
 
 
 class BadReference(Exception):
-    """A request named a category, job or person that is not the signed-in person's (it does not exist for them, or it
+    """A request named a category that is not the signed-in person's (it does not exist for them, or it
     is someone else's: they look exactly the same, on purpose). The routers answer 400."""
 
 
@@ -99,164 +99,6 @@ def delete_category(db: Session, category_id: int) -> str:
     return "deleted"
 
 
-def get_people(db: Session):
-    return db.query(models.Person).order_by(models.Person.name).all()
-
-
-def create_person(db: Session, person: schemas.PersonCreate):
-    db_person = models.Person(**person.model_dump())
-    db.add(db_person)
-    db.commit()
-    db.refresh(db_person)
-    return db_person
-
-
-def get_person(db: Session, person_id: int):
-    return db.query(models.Person).filter(models.Person.id == person_id).first()
-
-
-def update_person(db: Session, person_id: int, updates: schemas.PersonUpdate):
-    db_person = get_person(db, person_id)
-    if db_person is None:
-        return None
-    for field, value in updates.model_dump(exclude_unset=True).items():
-        setattr(db_person, field, value)
-    db.commit()
-    db.refresh(db_person)
-    return db_person
-
-
-def delete_person(db: Session, person_id: int) -> str:
-    """Returns 'deleted', 'not_found', or 'in_use'."""
-    db_person = get_person(db, person_id)
-    if db_person is None:
-        return "not_found"
-    job_count = db.query(models.Job).filter(models.Job.person_id == person_id).count()
-    if job_count > 0:
-        return "in_use"
-    db.delete(db_person)
-    db.commit()
-    return "deleted"
-
-
-def get_jobs(db: Session):
-    return db.query(models.Job).order_by(models.Job.applied, models.Job.created_at.desc()).all()
-
-
-def create_job(db: Session, job: schemas.JobCreate):
-    _must_have(db, models.Person, job.person_id, "person")
-    db_job = models.Job(**job.model_dump())
-    db.add(db_job)
-    db.commit()
-    db.refresh(db_job)
-    return db_job
-
-
-def get_job(db: Session, job_id: int):
-    return db.query(models.Job).filter(models.Job.id == job_id).first()
-
-
-def get_jobs_by_ids(db: Session, job_ids: list[int]):
-    return db.query(models.Job).filter(models.Job.id.in_(job_ids)).all()
-
-
-def update_job(db: Session, job_id: int, updates: schemas.JobUpdate):
-    db_job = get_job(db, job_id)
-    if db_job is None:
-        return None
-    data = updates.model_dump(exclude_unset=True)
-    _must_have(db, models.Person, data.get("person_id"), "person")
-    for field, value in data.items():
-        setattr(db_job, field, value)
-    db.commit()
-    db.refresh(db_job)
-    return db_job
-
-
-def import_jobs_from_csv(db: Session, rows: list, person_id: Optional[int] = None) -> schemas.JobImportResult:
-    """Bulk-upsert jobs from a scored-jobs CSV export (the job-scoring
-    Chrome extension). Matches existing jobs by url: if found, refreshes
-    only the scoring fields (tier/summary/matched/gaps/strengths/scored_at/
-    jd_text) - applied and everything else stay exactly as they were, since
-    re-scoring shouldn't touch your tracked application progress. person_id
-    (the Person label) is set on newly-created jobs, and backfilled onto
-    existing jobs that don't have one yet (e.g. jobs imported before this
-    feature existed) - but never overwrites a job that's already tagged, so
-    a later re-import can't silently retag whose job it is. Rows missing a
-    url or title are skipped.
-    """
-    _must_have(db, models.Person, person_id, "person")
-    created = updated = skipped = 0
-    for row in rows:
-        url = (row.get("url") or "").strip()
-        if not url:
-            skipped += 1
-            continue
-
-        scored_at = None
-        raw_scored_at = (row.get("scored_at") or "").strip()
-        if raw_scored_at:
-            try:
-                scored_at = datetime.fromisoformat(raw_scored_at.replace("Z", "+00:00")).replace(tzinfo=None)
-            except ValueError:
-                scored_at = None
-
-        score_data = {
-            "salary": (row.get("salary") or "").strip() or None,
-            "tier": (row.get("tier") or "").strip() or None,
-            "summary": (row.get("summary") or "").strip() or None,
-            "matched": (row.get("matched") or "").strip() or None,
-            "gaps": (row.get("gaps") or "").strip() or None,
-            "strengths": (row.get("strengths") or "").strip() or None,
-            "scored_at": scored_at,
-            "jd_text": (row.get("jd_text") or "").strip() or None,
-        }
-
-        existing = db.query(models.Job).filter(models.Job.url == url).first()
-        if existing:
-            for field, value in score_data.items():
-                setattr(existing, field, value)
-            # Fill in the tag if it's not already set (e.g. a job that
-            # predates this feature, or was imported with no one picked), but
-            # never overwrite one that's already assigned - if two people's
-            # CSVs ever both contain the same URL, whoever's already tagged
-            # it keeps it rather than a later re-import silently stealing it.
-            if person_id is not None and existing.person_id is None:
-                existing.person_id = person_id
-            updated += 1
-        else:
-            title = (row.get("title") or "").strip()
-            if not title:
-                skipped += 1
-                continue
-            db.add(
-                models.Job(
-                    name=title,
-                    url=url,
-                    company=(row.get("company") or "").strip() or None,
-                    person_id=person_id,
-                    **score_data,
-                )
-            )
-            created += 1
-
-    db.commit()
-    return schemas.JobImportResult(created=created, updated=updated, skipped=skipped)
-
-
-def delete_job(db: Session, job_id: int) -> str:
-    """Returns 'deleted', 'not_found', or 'in_use'."""
-    db_job = get_job(db, job_id)
-    if db_job is None:
-        return "not_found"
-    task_count = db.query(models.Task).filter(models.Task.job_id == job_id).count()
-    if task_count > 0:
-        return "in_use"
-    db.delete(db_job)
-    db.commit()
-    return "deleted"
-
-
 MAX_DAYS_AHEAD = 800  # about two years
 
 
@@ -311,7 +153,7 @@ def materialize_recurring(db: Session, start: Optional[datetime], end: Optional[
                 db.add(
                     models.Task(
                         category_id=origin.category_id,
-                        job_id=origin.job_id,
+                        link_url=origin.link_url,
                         title=origin.title,
                         description=origin.description,
                         status=models.TaskStatus.open,
@@ -407,7 +249,6 @@ def get_backlog(db: Session):
 
 def create_task(db: Session, task: schemas.TaskCreate):
     _must_have(db, models.Category, task.category_id, "category")
-    _must_have(db, models.Job, task.job_id, "job")
     max_order = db.query(func.max(models.Task.sort_order)).scalar() or 0
     db_task = models.Task(**task.model_dump(), sort_order=max_order + 10)
     db.add(db_task)
@@ -429,27 +270,17 @@ def update_task(db: Session, task_id: int, updates: schemas.TaskUpdate):
     if "category_id" in data and data["category_id"] is None:
         raise BadReference("A task needs a category")
     _must_have(db, models.Category, data.get("category_id"), "category")
-    _must_have(db, models.Job, data.get("job_id"), "job")
     was_done = db_task.status == models.TaskStatus.done
     becoming_done = data.get("status") == models.TaskStatus.done
 
     if becoming_done and not was_done:
         data["completed_at"] = datetime.utcnow()
-        if db_task.job_id is not None:
-            job = get_job(db, db_task.job_id)
-            if job is not None:
-                job.applied = True
     elif "status" in data and not becoming_done and was_done:
-        # Reopening (or putting on hold) a previously-done task un-does the
-        # completion side effect on its linked job, if it has one - and
-        # restarts its reminder plan from scratch, same reasoning as below.
+        # Reopening (or putting on hold) a previously-done task restarts its
+        # reminder plan from scratch, same reasoning as below.
         data["completed_at"] = None
         data["remind_count_sent"] = 0
         data["last_reminded_at"] = None
-        if db_task.job_id is not None:
-            job = get_job(db, db_task.job_id)
-            if job is not None:
-                job.applied = False
 
     # Editing any part of the reminder plan restarts it - otherwise raising
     # remind_max_count after it's already been hit (or changing remind_at
