@@ -186,3 +186,9 @@ class PushSubscription(Base, owned.OwnedMixin):
     p256dh = Column(String, nullable=False)
     auth = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# Tell the dashboard when someone's access to this app changes (shared_python.access_events), so every menu's list of apps follows.
+from shared_python import access_events  # noqa: E402
+
+access_events.install(User)
