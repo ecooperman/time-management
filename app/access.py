@@ -20,7 +20,7 @@ from . import config, crud, models
 from .database import SessionLocal
 
 PUBLIC_PATHS = ("/manifest.json", "/icons/", "/sw.js")
-seen = usage.LastSeen(SessionLocal)  # when each person was last here, for the dashboard's stats pages
+seen = usage.LastSeen(SessionLocal, app="time")  # when each person was last here, for the dashboard's stats pages
 
 
 def account_for(email: str) -> Union[Account, str]:
