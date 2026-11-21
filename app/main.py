@@ -13,7 +13,7 @@ from shared_python import accounts_gate, oidc_login, owned
 from . import access, config, crud, schemas
 from .config import SHARED_ASSETS_BASE
 from .reminders import run_reminder_loop
-from .routers import categories, push, tasks, users
+from .routers import categories, push, stats, tasks, users
 
 # Schema is owned by Alembic migrations (see migrations/) - run
 # `alembic upgrade head` before starting the app rather than relying on
@@ -112,6 +112,7 @@ async def no_cache(request: Request, call_next):
 
 app.include_router(categories.router)
 app.include_router(push.router)
+app.include_router(stats.router)
 app.include_router(tasks.router)
 app.include_router(users.router)
 

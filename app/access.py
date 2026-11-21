@@ -13,13 +13,14 @@ the installable-app manifest, the icons, and the push-notification service worke
 redirects to a login page is refused by the browser, which would break push for a signed-out device)."""
 from typing import Union
 
-from shared_python import accounts_gate
+from shared_python import accounts_gate, usage
 from shared_python.accounts_gate import Account
 
 from . import config, crud, models
 from .database import SessionLocal
 
 PUBLIC_PATHS = ("/manifest.json", "/icons/", "/sw.js")
+seen = usage.LastSeen(SessionLocal)  # when each person was last here, for the dashboard's stats pages
 
 
 def account_for(email: str) -> Union[Account, str]:
@@ -43,4 +44,5 @@ def install(app) -> None:
         account_for=account_for,
         dev_user_email=config.DEV_USER_EMAIL,
         public_paths=PUBLIC_PATHS,
+        seen=seen,
     )
