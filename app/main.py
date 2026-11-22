@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from shared_python import accounts_gate, oidc_login, owned
+from shared_python import accounts_gate, feedback_relay, oidc_login, owned
 
 from . import access, config, crud, schemas
 from .config import SHARED_ASSETS_BASE
@@ -113,6 +113,7 @@ async def no_cache(request: Request, call_next):
 app.include_router(categories.router)
 app.include_router(push.router)
 app.include_router(stats.router)
+feedback_relay.install(app, "time")  # Send feedback in the menu, passed on to the dashboard's inbox (behind the accounts gate)
 app.include_router(tasks.router)
 app.include_router(users.router)
 
