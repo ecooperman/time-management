@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from shared_python import accounts_gate, feedback_relay, oidc_login, owned
+from shared_python import accounts_gate, feedback_relay, oidc_login, owned, pages
 
 from . import access, config, crud, schemas
 from .config import SHARED_ASSETS_BASE
@@ -49,6 +49,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Time Management", lifespan=lifespan)
 access.install(app)  # only people with an account get in, each inside their own private data (app/access.py)
 templates = Jinja2Templates(directory="templates")
+pages.install(templates)
 
 
 @app.get("/api/version")
