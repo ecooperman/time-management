@@ -1,5 +1,8 @@
 let categories = [];
 let categoriesById = {};
+// Resolves once the categories are loaded. init asks for them at the same moment as the tasks (not before), and anything that draws a task
+// card waits on this first, because a card's colour comes from its category.
+let categoriesReady = Promise.resolve();
 let activeTaskId = null;
 let activeTaskScheduledDateKey = null; // "YYYY-MM-DD" of the open task's scheduled_date, if any - needed at save time to combine with the reminder time input into a full remind_at datetime
 let activeTaskSeriesId = null; // the open task's origin task id, if it's a materialized occurrence of a recurring series - needed by the Stop repeating/Edit series buttons
@@ -333,6 +336,7 @@ async function loadAndRenderCalendar() {
     document.getElementById("calendar"),
     Global.fetchJSON(`/api/tasks?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`)
   );
+  await categoriesReady;
   renderGrid(days, bucketTasksByDate(tasks));
   updateNavTitle(days);
 }
@@ -353,6 +357,7 @@ function renderBacklog(tasks) {
 
 async function refreshBacklog() {
   const tasks = await Global.withLoading(document.getElementById("backlog-list"), Global.fetchJSON("/api/tasks/backlog"));
+  await categoriesReady;
   renderBacklog(tasks);
 }
 
@@ -779,7 +784,8 @@ async function openTaskFromQueryParam() {
 }
 
 async function init() {
-  await loadCategories();
+  categoriesReady = loadCategories(); // not awaited here: the tasks are requested while the categories are still on their way
+  categoriesReady.catch(() => {}); // a failure is reported where it is awaited (the first render)
   initViewToggle();
   initNavControls();
   initModal();

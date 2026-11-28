@@ -100,15 +100,8 @@ app.get("/admin.html", response_class=HTMLResponse)(_render("admin.html"))
 app.get("/users.html", response_class=HTMLResponse)(_render("users.html"))
 
 
-@app.middleware("http")
-async def no_cache(request: Request, call_next):
-    """Never let the browser (or iOS's aggressive standalone-PWA cache) serve
-    a stale copy of the app - this is a single-user local tool, not a public
-    site, so there's no real cost to always fetching fresh.
-    """
-    response = await call_next(request)
-    response.headers["Cache-Control"] = "no-store"
-    return response
+# Cache-Control for every response: no-store, except a versioned script/stylesheet/image (?v=<hash>), kept for a year - see shared_python/pages.py.
+pages.install_cache_headers(app)
 
 
 app.include_router(categories.router)
